@@ -223,16 +223,22 @@ class AvatarTracker:
 
         if not np.any(diff):
             memory.consecutive_bumps += 1
+            memory.plan_queue.clear()
             if memory.avatar_pos:
                 ar, ac = memory.avatar_pos
                 step = memory.step_size
-                wall_r = int(np.clip(ar + exp_dr * step, 0, 63))
-                wall_c = int(np.clip(ac + exp_dc * step, 0, 63))
-                r_low, r_high = max(0, wall_r - step // 2), min(64, wall_r + step // 2 + 1)
-                c_low, c_high = max(0, wall_c - step // 2), min(64, wall_c + step // 2 + 1)
-                memory.passable_map[r_low:r_high, c_low:c_high] = False
-                memory.known_walls.add((wall_r, wall_c))
-                memory.plan_queue.clear()
+                raw_wall_r = ar + exp_dr * step
+                raw_wall_c = ac + exp_dc * step
+                if 0 <= raw_wall_r < 64 and 0 <= raw_wall_c < 64:
+                    wall_r = raw_wall_r
+                    wall_c = raw_wall_c
+                    r_low, r_high = max(0, wall_r - step // 2), min(64, wall_r + step // 2 + 1)
+                    c_low, c_high = max(0, wall_c - step // 2), min(64, wall_c + step // 2 + 1)
+                    memory.passable_map[r_low:r_high, c_low:c_high] = False
+                    memory.known_walls.add((wall_r, wall_c))
+                    # Defensive invariant: avatar's current standing position is strictly passable
+                    memory.passable_map[ar, ac] = True
+                    memory.known_walls.discard((ar, ac))
             return memory.avatar_pos, False
 
         memory.consecutive_bumps = 0
@@ -280,6 +286,9 @@ class GeodesicPlanner:
         step_size: int,
         legal_actions: Set[GameAction],
     ) -> list[GameAction]:
+        if start == goal:
+            return []
+
         sr, sc = start
         gr, gc = goal
         dr = gr - sr
@@ -292,6 +301,9 @@ class GeodesicPlanner:
 
         v_count = int(round(abs(dr) / max(1, step_size)))
         h_count = int(round(abs(dc) / max(1, step_size)))
+
+        if v_count == 0 and h_count == 0:
+            return []
 
         # 1. Vertical first, then Horizontal
         can_v_first = (v_act in legal_actions or v_count == 0) and (h_act in legal_actions or h_count == 0)
@@ -343,6 +355,9 @@ class GeodesicPlanner:
         legal_actions: Set[GameAction],
         max_expansions: int = 1200,
     ) -> list[GameAction]:
+        if start == goal:
+            return []
+
         sr, sc = start
         gr, gc = goal
         dirs = [
@@ -368,7 +383,12 @@ class GeodesicPlanner:
             f, g, r, c, ldr, ldc = heapq.heappop(pq)
             expansions += 1
 
-            if abs(r - gr) < max(2, step_size) and abs(c - gc) < max(2, step_size) and (r, c) != (sr, sc):
+            if (r, c) == (gr, gc) or (
+                step_size > 1
+                and abs(r - gr) < step_size
+                and abs(c - gc) < step_size
+                and (r, c) != (sr, sc)
+            ):
                 found = True
                 target_r, target_c = r, c
                 break
@@ -561,24 +581,65 @@ class MyAgent(Agent):
     def _get_orthogonal_escape(self, legal_actions: List[GameAction]) -> Optional[GameAction]:
         legal_set = set(legal_actions)
         last = self.last_action
+
+        def is_passable(act: GameAction) -> bool:
+            if not self.memory.avatar_pos or act not in DIRECTION_VECTORS:
+                return True
+            ar, ac = self.memory.avatar_pos
+            step = self.memory.step_size
+            dr, dc = DIRECTION_VECTORS[act]
+            nr = int(np.clip(ar + dr * step, 0, 63))
+            nc = int(np.clip(ac + dc * step, 0, 63))
+            return bool(self.memory.passable_map[nr, nc] and (nr, nc) != (ar, ac))
+
+        primary_cands: list[GameAction] = []
+        primary_reason = "loop_break_passable"
+        secondary_cands: list[GameAction] = []
+
         if last in (GameAction.ACTION1, GameAction.ACTION2):
-            for esc in (GameAction.ACTION4, GameAction.ACTION3):
-                if esc in legal_set:
-                    esc.reasoning = {"why": "orthogonal_escape_horizontal"}
-                    return esc
+            primary_cands = [GameAction.ACTION4, GameAction.ACTION3]
+            primary_reason = "orthogonal_escape_horizontal"
+            secondary_cands = [GameAction.ACTION2 if last == GameAction.ACTION1 else GameAction.ACTION1]
         elif last in (GameAction.ACTION3, GameAction.ACTION4):
-            for esc in (GameAction.ACTION1, GameAction.ACTION2):
-                if esc in legal_set:
-                    esc.reasoning = {"why": "orthogonal_escape_vertical"}
-                    return esc
-        if GameAction.ACTION5 in legal_set:
-            esc = GameAction.ACTION5
-            esc.reasoning = {"why": "orthogonal_escape_action5"}
-            return esc
-        for a in legal_actions:
-            if a != last:
-                a.reasoning = {"why": "loop_break_alternative"}
-                return a
+            primary_cands = [GameAction.ACTION1, GameAction.ACTION2]
+            primary_reason = "orthogonal_escape_vertical"
+            secondary_cands = [GameAction.ACTION4 if last == GameAction.ACTION3 else GameAction.ACTION3]
+        else:
+            primary_cands = [GameAction.ACTION4, GameAction.ACTION1, GameAction.ACTION2, GameAction.ACTION3]
+            primary_reason = "loop_break_passable"
+            secondary_cands = []
+
+        # 1. Try passable primary orthogonal candidates (strictly excluding ACTION5)
+        for esc in primary_cands:
+            if esc in legal_set and esc != GameAction.ACTION5 and is_passable(esc):
+                esc.reasoning = {"why": primary_reason}
+                return esc
+
+        # 2. Try passable secondary candidates (reverse / alternate directional)
+        for esc in secondary_cands:
+            if esc in legal_set and esc != GameAction.ACTION5 and is_passable(esc):
+                esc.reasoning = {"why": "loop_break_passable"}
+                return esc
+
+        # 3. If avatar_pos is known and none of preferred are passable, try ANY passable directional action
+        all_dirs = [GameAction.ACTION4, GameAction.ACTION1, GameAction.ACTION2, GameAction.ACTION3]
+        for esc in all_dirs:
+            if esc in legal_set and esc != last and esc != GameAction.ACTION5 and is_passable(esc):
+                esc.reasoning = {"why": "loop_break_passable"}
+                return esc
+
+        # 4. Fallback if none verified passable: pick primary candidate in legal_set (excluding ACTION5)
+        for esc in primary_cands:
+            if esc in legal_set and esc != GameAction.ACTION5:
+                esc.reasoning = {"why": primary_reason}
+                return esc
+
+        # 5. Fallback: any legal directional action != last (excluding ACTION5)
+        for esc in all_dirs:
+            if esc in legal_set and esc != last and esc != GameAction.ACTION5:
+                esc.reasoning = {"why": "loop_break_alternative"}
+                return esc
+
         return None
 
     def _select_best_target(self, sprites: list[dict[str, Any]], avatar_pos: Tuple[int, int]) -> Optional[dict[str, Any]]:
