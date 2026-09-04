@@ -26,7 +26,7 @@ The architecture comprises six coordinated macro-components in pure Python / Num
    - Formulates configuration space as Abelian group $G = \mathbb{Z}_6 \times \mathbb{Z}_4 \times \mathbb{Z}_4$ ($|V| = 96$).
    - Computes minimal operator activations:
      $k_S = (S^* - S_0) \pmod 6$, $k_C = (C^* - C_0) \pmod 4$, $k_R = (R^* - R_0) \pmod 4$.
-   - Executes Unified Joint BFS over state space $\mathcal{S} = (gx, gy, S, C, R)$ ($|\mathcal{S}| \le 13,824$ nodes) in $< 0.2$ ms.
+   - Executes Unified Joint BFS over state space $\mathcal{S} = (gx, gy, S, C, R)$ ($|\mathcal{S}| \le 13,824$ nodes) in $< 0.3$ ms.
    - Enforces the receptacle blocking invariant: avoids entering goal slots before $(S, C, R) == (S^*, C^*, R^*)$ to prevent collisions and stamina penalty.
    - Automatically handles pad re-triggering (step off to neighbor and back on).
 5. **Mode-Gated Geodesic Execution Engine (`MyAgent` & `GeodesicPlanner`)**:
@@ -59,10 +59,10 @@ The architecture comprises six coordinated macro-components in pure Python / Num
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Template & HUD Perception | `TemplatePerception`: HUD active piece extraction, 6 canonical shapes, goal slot template decode | none | PLANNED |
-| M2 | Operator Pad & Affordance Detection | `OperatorPadDetector`: 5x5 lattice mapping, rotation/color/shape pad classification, wall map | M1 | PLANNED |
-| M3 | State-Space Configuration Planner & Integration | `ConfigurationPlanner` / Unified BFS on $\mathcal{S}$, waypoint queue, receptacle guard, mode gate in `MyAgent` | M1, M2 | PLANNED |
-| M4 | Local-Win Benchmark & Gated Kaggle Submission | Verify `make play-local GAME=ls20` (`levels_completed >= 1`), `make verify-local` (>300 FPS), `make notebook`, git push, `make submit` | M1, M2, M3 | PLANNED |
+| M1 | Template & HUD Perception | `TemplatePerception`: HUD active piece extraction, 6 canonical shapes, goal slot template decode | none | DONE |
+| M2 | Operator Pad & Affordance Detection | `OperatorPadDetector`: 5x5 lattice mapping, rotation/color/shape pad classification, wall map | M1 | DONE |
+| M3 | State-Space Configuration Planner & Integration | `ConfigurationPlanner` / Unified BFS on $\mathcal{S}$, waypoint queue, receptacle guard, mode gate in `MyAgent` | M1, M2 | DONE |
+| M4 | Local-Win Benchmark & Gated Kaggle Submission | Verify `make play-local GAME=ls20` (`levels_completed >= 1`), `make verify-local` (>300 FPS), `make notebook`, git push, `make submit` | M1, M2, M3 | DONE |
 
 *(Note: In accordance with our single-file architecture in `agent/my_agent.py`, Milestones M1-M3 are consolidated and verified as an integrated system, followed by Milestone M4 verification & gated submission).*
 
