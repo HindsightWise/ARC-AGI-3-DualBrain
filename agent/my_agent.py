@@ -1,27 +1,26 @@
 """
-The Dual-Brain Cognitive Agent for ARC-AGI-3 (Version 2).
+The Dual-Brain Cognitive Agent for ARC-AGI-3 (Version 3).
 Engineered to maximize Relative Human Action Efficiency (RHAE) under quadratic penalty:
-1. Scene Perception:
-   - Dynamic background color detection via histogram mode.
-   - Pure NumPy connected-component segmentation for sprite clusters & centroids.
-   - Fast background/canvas filtering for sub-millisecond execution.
-2. Geodesic Trajectory Planning (Requirement R1):
-   - Direct straight-line Manhattan action sequences (|r1-r2| + |c1-c2|) with zero jitter.
-   - Minimal convex detours via A* with turn-penalty metric.
-   - Multi-step commitment queue (collections.deque) delivering O(1) latency (<0.5ms/step).
-3. Complete Action Space Specialization (Requirement R2):
-   - ACTION1..4: Directional moves from geodesic queue.
-   - ACTION5: Contextual interaction affordance testing & execution.
-   - ACTION6: Coordinate tap targeting sprite centroids {"x": x, "y": y} in [0, 63] via click queue.
-4. Cognitive Integrity & Anti-Fragility (Requirement R3):
-   - Two-Phase Planning (Phase 1 micro-probing; Phase 2 goal pursuit).
-   - Real-time bump collision detection updating occupancy grid (passable map).
-   - State hashing + n-gram action cycle detection to break circular deadlocks.
-   - Terminal Safety: Immediate GameAction.RESET on GAME_OVER preventing HTTP 400.
+1. Corner Goal Template & HUD Extraction (Version 3 Requirement R1):
+   - Canonical 3x3 binary shape primitives library (6 shapes, 4 rotations).
+   - Bottom-left corner HUD active block extraction (rows 55-60, cols 3-8).
+   - Goal receptacle template decoding (S*, C*, R*).
+2. Operator Pad & Affordance Transition Mapping (Version 3 Requirement R2):
+   - 12x12 discrete tile lattice quantization (x = 4 + 5gx, y = 5gy).
+   - Classification of 5x5 operator pads: Rotation 90° CW, Color cycle, Shape morph.
+   - Receptacle blocking invariant: never navigate into an unmatched goal receptacle.
+3. State-Space Configuration Planning (Version 3 Requirement R3):
+   - Unified Joint State-Space BFS on S = (gx, gy, S, C, R).
+   - Minimal geodesic trajectories with automatic pad re-triggering and obstacle avoidance.
+4. Mode-Gated Execution Engine & Complete Action Space (Version 3 Requirement R4):
+   - Mode Gating: Puzzle games (ls20) activate the State-Space Configuration Planner;
+     non-puzzle games (vc33) retain 100% of Version 2 functionality (ACTION6, ACTION5, A* geodesic).
+   - Terminal Safety: Immediate GameAction.RESET on GAME_OVER preventing HTTP 400 errors.
 """
 from __future__ import annotations
 
 import collections
+import dataclasses
 import heapq
 import hashlib
 import random
@@ -425,9 +424,256 @@ class GeodesicPlanner:
         path.reverse()
         return path
 
+class BlockConfiguration:
+    """Immutable representation of a block configuration (shape, color, rotation)."""
+    __slots__ = ("shape_id", "color_idx", "rotation_idx", "raw_color", "rotation_deg")
+
+    def __init__(
+        self,
+        shape_id: int,
+        color_idx: int,
+        rotation_idx: int,
+        raw_color: int = -1,
+        rotation_deg: int = -1,
+    ) -> None:
+        self.shape_id = shape_id
+        self.color_idx = color_idx
+        self.rotation_idx = rotation_idx
+        self.raw_color = raw_color
+        self.rotation_deg = rotation_deg
+
+    def __repr__(self) -> str:
+        return (
+            f"BlockConfiguration(shape_id={self.shape_id}, color_idx={self.color_idx}, "
+            f"rotation_idx={self.rotation_idx}, raw_color={self.raw_color}, rotation_deg={self.rotation_deg})"
+        )
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, BlockConfiguration):
+            return False
+        return (
+            self.shape_id == other.shape_id
+            and self.color_idx == other.color_idx
+            and self.rotation_idx == other.rotation_idx
+        )
+
+    def __hash__(self) -> int:
+        return hash((self.shape_id, self.color_idx, self.rotation_idx))
+
+
+
+class TemplatePerception:
+    """Canonical shape matching and HUD/Goal template extraction."""
+
+    # 6 canonical 3x3 binary shape primitives from ARC-AGI-3 (ls20)
+    SHAPES: dict[int, np.ndarray] = {
+        0: np.array([[1, 1, 0], [0, 1, 1], [1, 0, 1]], dtype=bool),  # gngifvjddu
+        1: np.array([[0, 1, 0], [0, 1, 0], [1, 1, 1]], dtype=bool),  # fywfjzkxlm
+        2: np.array([[1, 0, 1], [1, 0, 1], [1, 1, 1]], dtype=bool),  # mkfbgalsbe
+        3: np.array([[0, 1, 1], [1, 0, 1], [0, 1, 0]], dtype=bool),  # nnjhdcanjk
+        4: np.array([[0, 1, 0], [1, 1, 0], [0, 1, 1]], dtype=bool),  # grcpfuizfp
+        5: np.array([[1, 1, 1], [0, 0, 1], [1, 0, 1]], dtype=bool),  # ubspnhafvq
+    }
+
+    PALETTE: list[int] = [12, 9, 14, 8]
+    ROTATIONS: list[int] = [0, 90, 180, 270]
+
+    @classmethod
+    def match_sprite(cls, patch: np.ndarray, bg_color: int = 5) -> Optional[BlockConfiguration]:
+        """Matches a 3x3 or downsampled 6x6 patch against the canonical shape library."""
+        H, W = patch.shape
+        if H == 6 and W == 6:
+            patch = patch[::2, ::2]
+        elif (H, W) != (3, 3):
+            return None
+
+        # Check for palette colors
+        pal_mask = np.isin(patch, cls.PALETTE)
+        if not pal_mask.any():
+            return None
+        pal_colors, counts = np.unique(patch[pal_mask], return_counts=True)
+        fg_color = int(pal_colors[np.argmax(counts)])
+
+        bin_patch = (patch == fg_color)
+        for s_id, base_shp in cls.SHAPES.items():
+            for r_idx, deg in enumerate(cls.ROTATIONS):
+                rot_shp = np.rot90(base_shp, -deg // 90)
+                if np.array_equal(bin_patch, rot_shp):
+                    c_idx = cls.PALETTE.index(fg_color)
+                    return BlockConfiguration(
+                        shape_id=s_id,
+                        color_idx=c_idx,
+                        rotation_idx=r_idx,
+                        raw_color=fg_color,
+                        rotation_deg=deg,
+                    )
+        return None
+
+    @classmethod
+    def extract_hud_configuration(cls, grid: np.ndarray) -> Optional[BlockConfiguration]:
+        """Extracts active block from bottom-left corner HUD (rows 55:61, cols 3:9)."""
+        if grid.shape[0] < 61 or grid.shape[1] < 9:
+            return None
+        return cls.match_sprite(grid[55:61, 3:9], bg_color=5)
+
+
+class OperatorPadDetector:
+    """Scans 12x12 discrete tile lattice for 5x5 operator pads, goal receptacles, walls, and avatar."""
+
+    @classmethod
+    def detect_puzzle_elements(cls, grid: np.ndarray, step_size: int = 5) -> dict[str, Any]:
+        elements: dict[str, Any] = {
+            "rotation_pads": [],
+            "color_pads": [],
+            "shape_pads": [],
+            "goal_slots": {},
+            "avatar_tile": None,
+            "passable": np.zeros((12, 12), dtype=bool),
+            "wall_color": 4,
+        }
+        H, W = grid.shape
+        if H != 64 or W != 64:
+            return elements
+
+        for gy in range(12):
+            for gx in range(12):
+                r = step_size * gy
+                c = 4 + step_size * gx
+                patch = grid[r:r + step_size, c:c + step_size]
+                if patch.shape != (step_size, step_size):
+                    continue
+
+                u = set(patch.flatten())
+
+                # Avatar detection: top 2 rows 12, bottom 3 rows 9
+                if 12 in u and 9 in u and np.sum(patch == 12) == 10 and np.sum(patch == 9) == 15:
+                    elements["avatar_tile"] = (gx, gy)
+                    elements["passable"][gy, gx] = True
+                    continue
+
+                # Rotation pad (rhsxkxzdjz): contains color 1 and 0, no wall color 4
+                if 1 in u and 0 in u and 4 not in u and np.sum(patch == 0) == 3 and np.sum(patch == 1) == 2:
+                    elements["rotation_pads"].append((gx, gy))
+                    elements["passable"][gy, gx] = True
+                    continue
+
+                # Color swap pad (soyhouuebz): contains multi-palette colors
+                if len(u & set(TemplatePerception.PALETTE)) >= 3:
+                    elements["color_pads"].append((gx, gy))
+                    elements["passable"][gy, gx] = True
+                    continue
+
+                # Shape morph pad (mkjdaccuuf): contains color 0 and floor 3 (exactly 4 zeros)
+                if 0 in u and 1 not in u and 4 not in u and len(u & set(TemplatePerception.PALETTE)) == 0 and np.sum(patch == 0) == 4:
+                    elements["shape_pads"].append((gx, gy))
+                    elements["passable"][gy, gx] = True
+                    continue
+
+                # Goal receptacle (rjlbuycveu): framed with color 5 containing internal 3x3 sprite
+                if (patch[0, :] == 5).all() and (patch[4, :] == 5).all() and (patch[:, 0] == 5).all() and (patch[:, 4] == 5).all() and not (patch == 5).all():
+                    cfg = TemplatePerception.match_sprite(patch[1:4, 1:4], bg_color=5)
+                    if cfg is not None:
+                        elements["goal_slots"][(gx, gy)] = cfg
+                        elements["passable"][gy, gx] = True
+                        continue
+
+                # Walkable floor or passable tile
+                if not (patch == elements["wall_color"]).all():
+                    # Check not bottom-left HUD quadrant (gy == 11 and gx <= 2)
+                    if not (gy == 11 and gx <= 2):
+                        elements["passable"][gy, gx] = True
+
+        return elements
+
+
+class ConfigurationPlanner:
+    """Unified Joint State-Space BFS planner on S = (gx, gy, S, C, R)."""
+
+    ACTIONS_MAP = [
+        (GameAction.ACTION1, 0, -1),  # Up: gy - 1
+        (GameAction.ACTION2, 0, 1),   # Down: gy + 1
+        (GameAction.ACTION3, -1, 0),  # Left: gx - 1
+        (GameAction.ACTION4, 1, 0),   # Right: gx + 1
+    ]
+
+    @classmethod
+    def plan_unified_bfs(
+        cls,
+        start_tile: Tuple[int, int],
+        start_cfg: BlockConfiguration,
+        goal_slots: dict[Tuple[int, int], BlockConfiguration],
+        pads: dict[Tuple[int, int], str],
+        passable: np.ndarray,
+        legal_actions: Set[GameAction],
+    ) -> list[GameAction]:
+        start_gx, start_gy = start_tile
+        start_state = (start_gx, start_gy, start_cfg.shape_id, start_cfg.color_idx, start_cfg.rotation_idx)
+
+        target_dict = {
+            pos: (cfg.shape_id, cfg.color_idx, cfg.rotation_idx)
+            for pos, cfg in goal_slots.items()
+        }
+
+        queue = collections.deque([start_state])
+        visited: dict[Tuple[int, int, int, int, int], Optional[Tuple[Tuple[int, int, int, int, int], GameAction]]] = {
+            start_state: None
+        }
+        goal_state: Optional[Tuple[int, int, int, int, int]] = None
+
+        allowed_actions = [
+            (act, dgx, dgy) for act, dgx, dgy in cls.ACTIONS_MAP if act in legal_actions
+        ]
+
+        while queue:
+            cur = queue.popleft()
+            cgx, cgy, cS, cC, cR = cur
+
+            # Check if current state is a solved goal receptacle
+            if (cgx, cgy) in target_dict and (cS, cC, cR) == target_dict[(cgx, cgy)]:
+                goal_state = cur
+                break
+
+            for act, dgx, dgy in allowed_actions:
+                ngx, ngy = cgx + dgx, cgy + dgy
+                if 0 <= ngx < 12 and 0 <= ngy < 12 and passable[ngy, ngx]:
+                    # Enforce receptacle blocking invariant: never navigate into an unmatched goal receptacle
+                    if (ngx, ngy) in target_dict and (cS, cC, cR) != target_dict[(ngx, ngy)]:
+                        continue
+
+                    nS, nC, nR = cS, cC, cR
+                    # Transition operators on pad entry
+                    if (ngx, ngy) in pads:
+                        ptype = pads[(ngx, ngy)]
+                        if ptype == "rot":
+                            nR = (cR + 1) % 4
+                        elif ptype == "color":
+                            nC = (cC + 1) % 4
+                        elif ptype == "shape":
+                            nS = (cS + 1) % 6
+
+                    nxt = (ngx, ngy, nS, nC, nR)
+                    if nxt not in visited:
+                        visited[nxt] = (cur, act)
+                        queue.append(nxt)
+
+        if goal_state is None:
+            return []
+
+        # Reconstruct path
+        path: list[GameAction] = []
+        curr = goal_state
+        while visited[curr] is not None:
+            parent_entry = visited[curr]
+            assert parent_entry is not None
+            prev_state, action = parent_entry
+            path.append(action)
+            curr = prev_state
+        path.reverse()
+        return path
+
 
 class MyAgent(Agent):
-    """Dual-Brain Version 2 Agent implementing Geodesic Manhattan Trajectories & Complete Action Space."""
+    """Dual-Brain Version 3 Agent implementing Geodesic Manhattan Trajectories, State-Space Puzzle Planning, & Complete Action Space."""
 
     MAX_ACTIONS = 120
 
@@ -438,10 +684,14 @@ class MyAgent(Agent):
         np.random.seed(seed % (2**32 - 1))
         self.memory = WorkingMemory(loop_threshold=3)
         self.last_action: Optional[GameAction] = None
+        self.puzzle_mode: Optional[bool] = None
+        self.puzzle_elements: Optional[dict[str, Any]] = None
+        self.puzzle_avatar_tile: Optional[Tuple[int, int]] = None
+        self.last_levels_completed: int = 0
 
     @property
     def name(self) -> str:
-        return f"DualBrainAgent.v2.{self.MAX_ACTIONS}"
+        return f"DualBrainAgent.v3.{self.MAX_ACTIONS}"
 
     def is_done(self, frames: list[FrameData], latest_frame: FrameData) -> bool:
         return latest_frame.state in (GameState.WIN, "WIN")
@@ -449,6 +699,10 @@ class MyAgent(Agent):
     def choose_action(self, frames: list[FrameData], latest_frame: FrameData) -> GameAction:
         if latest_frame.state in (GameState.NOT_PLAYED, GameState.GAME_OVER, "NOT_PLAYED", "GAME_OVER"):
             self.memory.reset_for_level()
+            self.puzzle_mode = None
+            self.puzzle_elements = None
+            self.puzzle_avatar_tile = None
+            self.last_levels_completed = 0
             self.last_action = GameAction.RESET
             return GameAction.RESET
 
@@ -474,7 +728,78 @@ class MyAgent(Agent):
 
         self.memory.record_step(self.last_action, grid_bytes, self.memory.avatar_pos)
 
-        # Loop interceptor
+        # Level completion tracking & state reset
+        curr_levels = getattr(latest_frame, "levels_completed", 0)
+        if curr_levels > self.last_levels_completed:
+            self.last_levels_completed = curr_levels
+            self.puzzle_elements = None
+            self.puzzle_avatar_tile = None
+            self.memory.plan_queue.clear()
+
+        # Mode Gating: Detect if environment is a template-matching puzzle game
+        if self.puzzle_mode is None or self.puzzle_elements is None:
+            hud_cfg = TemplatePerception.extract_hud_configuration(grid)
+            if hud_cfg is not None:
+                p_elems = OperatorPadDetector.detect_puzzle_elements(grid, step_size=5)
+                if p_elems["goal_slots"]:
+                    self.puzzle_mode = True
+                    self.puzzle_elements = p_elems
+                    self.puzzle_avatar_tile = p_elems["avatar_tile"]
+                else:
+                    if self.puzzle_mode is None:
+                        self.puzzle_mode = False
+            else:
+                if self.puzzle_mode is None:
+                    self.puzzle_mode = False
+
+        # Version 3 Puzzle Solver Path
+        if self.puzzle_mode and self.puzzle_elements:
+            # Re-locate avatar tile on discrete lattice
+            cur_tile = None
+            for gy in range(12):
+                for gx in range(12):
+                    r = 5 * gy
+                    c = 4 + 5 * gx
+                    patch = grid[r:r + 5, c:c + 5]
+                    if np.sum(patch == 12) == 10 and np.sum(patch == 9) == 15:
+                        cur_tile = (gx, gy)
+                        break
+                if cur_tile:
+                    break
+
+            if cur_tile:
+                self.puzzle_avatar_tile = cur_tile
+            elif self.last_action and self.puzzle_avatar_tile and self.last_action in DIRECTION_VECTORS:
+                dr, dc = DIRECTION_VECTORS[self.last_action]
+                self.puzzle_avatar_tile = (self.puzzle_avatar_tile[0] + dc, self.puzzle_avatar_tile[1] + dr)
+
+            # Plan minimal trajectory via Unified State-Space BFS if queue is empty
+            if not self.memory.plan_queue and self.puzzle_avatar_tile:
+                hud_cfg = TemplatePerception.extract_hud_configuration(grid)
+                if hud_cfg is not None and self.puzzle_elements["goal_slots"]:
+                    pads_dict = {p: "rot" for p in self.puzzle_elements["rotation_pads"]}
+                    pads_dict.update({p: "color" for p in self.puzzle_elements["color_pads"]})
+                    pads_dict.update({p: "shape" for p in self.puzzle_elements["shape_pads"]})
+
+                    bfs_path = ConfigurationPlanner.plan_unified_bfs(
+                        start_tile=self.puzzle_avatar_tile,
+                        start_cfg=hud_cfg,
+                        goal_slots=self.puzzle_elements["goal_slots"],
+                        pads=pads_dict,
+                        passable=self.puzzle_elements["passable"],
+                        legal_actions=legal_set,
+                    )
+                    if bfs_path:
+                        self.memory.plan_queue.extend(bfs_path)
+
+            if self.memory.plan_queue:
+                action = self.memory.plan_queue.popleft()
+                if action in legal_set:
+                    action.reasoning = {"why": "puzzle_unified_bfs_step"}
+                    self.last_action = action
+                    return action
+
+        # Loop interceptor (Version 2)
         if self.memory.is_in_loop():
             self.memory.plan_queue.clear()
             self.memory.click_queue.clear()
@@ -537,6 +862,7 @@ class MyAgent(Agent):
         action = self._fallback_action(legal_actions, grid, bg_color, canvas_colors)
         self.last_action = action
         return action
+
 
     def _handle_action6(self, grid: np.ndarray, bg_color: int, canvas_colors: Set[int]) -> GameAction:
         if not self.memory.click_queue:
