@@ -64,6 +64,12 @@ HUMAN_BASELINES: Dict[str, int] = {
     "sc25": 28,
     "sk48": 30,
     "wa30": 35,
+    # 25 Novel Games
+    "ng01": 25, "ng02": 25, "ng03": 30, "ng04": 20, "ng05": 30,
+    "ng06": 20, "ng07": 25, "ng08": 25, "ng09": 30, "ng10": 25,
+    "ng11": 25, "ng12": 30, "ng13": 20, "ng14": 25, "ng15": 25,
+    "ng16": 30, "ng17": 25, "ng18": 30, "ng19": 25, "ng20": 30,
+    "ng21": 20, "ng22": 20, "ng23": 20, "ng24": 15, "ng25": 30,
 }
 
 
@@ -121,7 +127,8 @@ def run_single_episode(
             break
 
     elapsed = time.perf_counter() - t0
-    human = HUMAN_BASELINES.get(game_id, 25)
+    prefix = game_id.split("-")[0]
+    human = HUMAN_BASELINES.get(prefix, HUMAN_BASELINES.get(game_id, 25))
     rhae = min(1.15, (human / max(1, steps)) ** 2) if won else 0.0
 
     return {
@@ -144,7 +151,10 @@ def benchmark_suite(
     """Runs parallel benchmark across environments."""
     tasks = []
     for gid in games:
-        tasks.append((gid, max_steps, False, 0, "real"))
+        if gid.startswith("ng"):
+            tasks.append((gid, max_steps, True, 42, gid))
+        else:
+            tasks.append((gid, max_steps, False, 0, "real"))
 
     for i in range(num_synthetic):
         arch = "maze" if i % 2 == 0 else "click"
@@ -188,6 +198,7 @@ def main():
     parser.add_argument("--games", type=str, default="ls20,tn36,vc33,tu93", help="Comma-separated game IDs or 'all'")
     parser.add_argument("--steps", type=int, default=40, help="Max steps per game")
     parser.add_argument("--synthetic", type=int, default=4, help="Number of synthetic games to generate and test")
+    parser.add_argument("--novel-all", action="store_true", help="Benchmark all 25 novel games (ng01..ng25)")
     parser.add_argument("--workers", type=int, default=4, help="Number of parallel worker processes")
     parser.add_argument("--bench-fps", action="store_true", help="Run high-throughput FPS benchmark")
     args = parser.parse_args()
@@ -200,7 +211,10 @@ def main():
         print(f"==> WINS: {t_bench['wins']} / {t_bench['total_episodes']} ({t_bench['win_rate']*100:.1f}%)")
         return
 
-    if args.games == "all":
+    if args.novel_all:
+        game_list = [f"ng{i:02d}" for i in range(1, 26)]
+        args.synthetic = 0
+    elif args.games == "all":
         arc = arc_agi.Arcade(operation_mode=OperationMode.OFFLINE)
         game_list = sorted([e.game_id for e in arc.get_environments()])
     else:

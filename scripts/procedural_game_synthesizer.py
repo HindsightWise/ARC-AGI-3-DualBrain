@@ -119,6 +119,9 @@ class SyntheticMazeGame(ARCBaseGame):
             self.complete_action()
             return
 
+        avatar = self.current_level.get_sprites_by_tag("avatar")[0]
+        exit_sp = self.current_level.get_sprites_by_tag("exit")[0]
+
         act = self._action.id
         dx, dy = 0, 0
         if act == GameAction.ACTION1:  # Up
@@ -130,29 +133,26 @@ class SyntheticMazeGame(ARCBaseGame):
         elif act == GameAction.ACTION4:  # Right
             dx = self.step_size
 
-        new_x = self.avatar_sprite.x + dx
-        new_y = self.avatar_sprite.y + dy
+        new_x = avatar.x + dx
+        new_y = avatar.y + dy
 
         # Collision check with walls
         can_move = True
         for sp in self.current_level.get_sprites_by_tag("wall"):
             if (
                 new_x < sp.x + sp.width
-                and new_x + self.avatar_sprite.width > sp.x
+                and new_x + avatar.width > sp.x
                 and new_y < sp.y + sp.height
-                and new_y + self.avatar_sprite.height > sp.y
+                and new_y + avatar.height > sp.y
             ):
                 can_move = False
                 break
 
         if can_move:
-            self.avatar_sprite.set_position(new_x, new_y)
+            avatar.set_position(new_x, new_y)
 
         # Check win
-        if (
-            self.avatar_sprite.x == self.exit_sprite.x
-            and self.avatar_sprite.y == self.exit_sprite.y
-        ):
+        if avatar.x == exit_sp.x and avatar.y == exit_sp.y:
             self.next_level()
 
         self.complete_action()
@@ -237,9 +237,23 @@ class SyntheticClickPuzzle(ARCBaseGame):
         self.complete_action()
 
 
+def create_novel_game(game_id: str, seed: int = 42) -> ARCBaseGame:
+    """Factory creating any of the 25 novel games (ng01..ng25)."""
+    from scripts.novel_games import ALL_NOVEL_GAMES
+    key = game_id.lower().split("_")[0]
+    if key in ALL_NOVEL_GAMES:
+        cls = ALL_NOVEL_GAMES[key]
+        return cls(seed=seed)
+    raise ValueError(f"Unknown novel game: {game_id}. Available: {list(ALL_NOVEL_GAMES.keys())}")
+
+
 def generate_game(archetype: str = "maze", seed: int = 42) -> ARCBaseGame:
     """Factory creating configured synthetic ARC environments."""
-    if archetype == "maze":
+    from scripts.novel_games import ALL_NOVEL_GAMES
+    arch_key = archetype.lower().split("_")[0]
+    if arch_key in ALL_NOVEL_GAMES:
+        return ALL_NOVEL_GAMES[arch_key](seed=seed)
+    elif archetype == "maze":
         step = random.choice([1, 2, 3, 5])
         return SyntheticMazeGame(grid_w=32, grid_h=32, step_size=step, seed=seed)
     elif archetype == "click":
