@@ -1,0 +1,9 @@
+{
+  "step_lock_threshold": 2,
+  "loop_threshold": 2,
+  "click_strategy": "reactive_diff",
+  "camera_quantization_mode": "auto",
+  "bfs_max_nodes": 20000,
+  "geodesic_heuristic_weight": 1.39,
+  "hazard_repulsion_radius": 1
+}

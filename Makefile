@@ -59,6 +59,39 @@ verify-local: ## Quick smoke test: 50 steps on ls20 + vc33 only
 list-games: ## Show all available games
 	$(VENV_PY) scripts/play_local.py --list
 
+simulate: ## High-speed parallel simulation benchmark (e.g. make simulate GAMES=ls20,tn36)
+	MPLCONFIGDIR=/tmp/matplotlib $(VENV_PY) scripts/simulation_harness.py $(if $(GAMES),--games $(GAMES)) $(if $(STEPS),--steps $(STEPS))
+
+evolve: ## Run Red Queen evolutionary policy optimization across simulation episodes
+	MPLCONFIGDIR=/tmp/matplotlib $(VENV_PY) scripts/evolutionary_optimizer.py $(if $(GEN),--generations $(GEN)) $(if $(POP),--pop $(POP))
+
+synthesize: ## Test procedural ARC game generation
+	MPLCONFIGDIR=/tmp/matplotlib $(VENV_PY) scripts/procedural_game_synthesizer.py
+
+daemon-start: ## Launch 20-hour background autonomic evolution daemon
+	@if [ -f autonomic_daemon.pid ] && kill -0 $$(cat autonomic_daemon.pid) 2>/dev/null; then \
+	    echo "Daemon is already running with PID $$(cat autonomic_daemon.pid)"; \
+	else \
+	    nohup $(VENV_PY) scripts/autonomic_daemon.py >> autonomic_evolution.log 2>&1 & \
+	    echo "Autonomic Evolution Daemon started in background (PID: $$!). Log: autonomic_evolution.log"; \
+	fi
+
+daemon-stop: ## Stop background autonomic evolution daemon
+	@if [ -f autonomic_daemon.pid ]; then \
+	    kill $$(cat autonomic_daemon.pid) 2>/dev/null && rm -f autonomic_daemon.pid && echo "Daemon stopped."; \
+	else \
+	    echo "No running daemon PID file found."; \
+	fi
+
+daemon-status: ## Show status and latest 25 lines of autonomic evolution log
+	@if [ -f autonomic_daemon.pid ]; then \
+	    echo "● Autonomic Daemon is ACTIVE (PID: $$(cat autonomic_daemon.pid))"; \
+	else \
+	    echo "○ Autonomic Daemon is STOPPED"; \
+	fi
+	@echo "--- Latest Telemetry (autonomic_evolution.log) ---"
+	@tail -n 25 autonomic_evolution.log 2>/dev/null || echo "No logs yet."
+
 pull-sample: _check-kaggle ## Download the official Stochastic Goose sample notebook for reference
 	mkdir -p reference/stochastic-goose
 	$(KAGGLE) kernels pull inversion/arc3-sample-submission-stochastic-goose \
