@@ -143,7 +143,8 @@ def test_action6_vc33_targeting():
     grid[58:61, 10:13] = 9
 
     bg, canvas = ScenePerception.detect_background_and_canvas(grid)
-    sprites = ScenePerception.segment_sprites(grid, bg, canvas)
+    hud_box = (56, 64, 0, 64)
+    sprites = ScenePerception.segment_sprites(grid, bg, canvas, hud_bbox=hud_box)
     centroids = {s["centroid"] for s in sprites}
 
     print(f"  Found centroids: {centroids}")
@@ -157,7 +158,8 @@ def test_action6_vc33_targeting():
         assert s["centroid"][1] < 56, f"HUD sprite detected at cy={s['centroid'][1]} >= 56"
 
     # Test MyAgent emission of synthetic sprites
-    agent_synth = create_agent(game_id="vc33_synth")
+    agent_synth = create_agent(game_id="synthetic_click")
+    agent_synth.memory.hud_bbox = hud_box
     f_synth = make_frame(grid, available_actions=[GameAction.ACTION6])
 
     emitted = []
@@ -177,7 +179,7 @@ def test_action6_vc33_targeting():
     # 3. Fallback on completely empty grid
     empty_grid = np.zeros((64, 64), dtype=np.int8)
     f_empty = make_frame(empty_grid, available_actions=[GameAction.ACTION6])
-    agent_empty = create_agent(game_id="vc33_empty")
+    agent_empty = create_agent(game_id="empty_click")
     act_empty = agent_empty.choose_action([f_empty], f_empty)
     assert act_empty == GameAction.ACTION6
     assert (act_empty.action_data.x, act_empty.action_data.y) == (32, 32), (

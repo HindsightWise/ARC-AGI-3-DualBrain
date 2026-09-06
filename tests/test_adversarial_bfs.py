@@ -118,7 +118,9 @@ class TestCanonicalShapeInvariance(unittest.TestCase):
         hud_6x6 = np.kron(base_3x3, np.ones((2, 2), dtype=np.int8))
         grid[55:61, 3:9] = hud_6x6
 
-        cfg = TemplatePerception.extract_hud_configuration(grid)
+        res = TemplatePerception.extract_hud_configuration(grid)
+        self.assertIsNotNone(res)
+        cfg, _ = res
         self.assertIsNotNone(cfg)
         self.assertEqual(cfg.shape_id, 2)
         self.assertEqual(cfg.color_idx, 2)

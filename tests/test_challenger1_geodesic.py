@@ -259,9 +259,9 @@ class TestCollisionBumpLearning(unittest.TestCase):
         expected_wall = (30, 35)
         self.assertIn(expected_wall, memory.known_walls)
 
-        # For step_size=5, step // 2 = 2. Sub-grid [28:33, 33:38] should be False
-        r_low, r_high = 30 - 2, 30 + 2 + 1
-        c_low, c_high = 35 - 2, 35 + 2 + 1
+        # For top-left anchored tile with step_size=5, sub-grid [30:35, 35:40] should be False
+        r_low, r_high = 30, 30 + 5
+        c_low, c_high = 35, 35 + 5
         self.assertTrue(
             np.all(~memory.passable_map[r_low:r_high, c_low:c_high]),
             "All cells in step footprint around wall must be marked impassable",
