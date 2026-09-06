@@ -25,8 +25,28 @@ from agent.my_agent import (
     MyAgent,
     AvatarTracker,
     WorkingMemory,
-    VERIFIED_FLEET_PLANS,
 )
+
+MOCK_PLAN = [
+    GameAction.ACTION1,
+    GameAction.ACTION1,
+    GameAction.ACTION3,
+    GameAction.ACTION1,
+]
+
+KA59_MOCK_PLAN = [
+    GameAction.ACTION4,
+    GameAction.ACTION4,
+    GameAction.ACTION4,
+    GameAction.ACTION3,
+    GameAction.ACTION3,
+    GameAction.ACTION3,
+    GameAction.ACTION3,
+    GameAction.ACTION2,
+    (GameAction.ACTION6, {"x": 43, "y": 31}),
+    GameAction.ACTION4,
+    GameAction.ACTION1,
+]
 
 
 def create_mock_agent(game_id: str) -> MyAgent:
@@ -48,15 +68,19 @@ def test_queue_isolation_under_forced_bumps():
     assert len(agent.fleet_plan_queue) == 0
     assert not agent._fleet_plan_started
 
+    # Set up mock plan in fleet_plan_queue to test isolation
+    agent.fleet_plan_queue.extend(MOCK_PLAN)
+    agent._fleet_plan_started = True
+
     # Create dummy frame
     grid = np.zeros((64, 64), dtype=np.int8)
     grid[10:14, 10:14] = 3 # avatar
     frame = FrameData(frame=[grid], state=GameState.NOT_FINISHED, available_actions=[1, 2, 3, 4, 5, 6])
 
-    # First action: should initialize fleet_plan_queue with m0r0 plan
+    # First action: should yield from fleet_plan_queue
     act1 = agent.choose_action([frame], frame)
     assert agent._fleet_plan_started is True
-    expected_full_plan = VERIFIED_FLEET_PLANS["m0r0"]
+    expected_full_plan = MOCK_PLAN
     assert act1 == expected_full_plan[0]
     assert len(agent.fleet_plan_queue) == len(expected_full_plan) - 1
 
@@ -131,6 +155,8 @@ def test_ka59_step_by_step_collision_telemetry():
     env = arc.make("ka59")
     obs = env.reset()
     agent = MyAgent(card_id="sim", game_id="ka59", agent_name="test_ka59", ROOT_URL="http://sim", record=False, arc_env=env)
+    agent.fleet_plan_queue.extend(KA59_MOCK_PLAN)
+    agent._fleet_plan_started = True
 
     frames = [obs]
     actions_taken = []
@@ -164,7 +190,7 @@ def test_novel_game_queue_non_interference():
         act = agent.choose_action([frame], frame)
         assert len(agent.fleet_plan_queue) == 0, f"Fleet queue was unexpectedly populated for {gid}!"
         assert not agent._fleet_plan_started, f"Fleet plan was started for {gid}!"
-    print("  SUCCESS: Novel and unknown games are never intercepted by VERIFIED_FLEET_PLANS!")
+    print("  SUCCESS: Novel and unknown games are never intercepted by hardcoded plans!")
 
 
 def test_level_transition_queue_clearing():
@@ -173,7 +199,11 @@ def test_level_transition_queue_clearing():
     grid = np.zeros((64, 64), dtype=np.int8)
     frame_lvl0 = FrameData(frame=[grid], state=GameState.NOT_FINISHED, available_actions=[1, 2, 3, 4], levels_completed=0)
 
-    # Step 1 on Level 0: populates queue
+    # Seed fleet queue with mock plan
+    agent.fleet_plan_queue.extend(MOCK_PLAN)
+    agent._fleet_plan_started = True
+
+    # Step 1 on Level 0: yields action from fleet queue
     agent.choose_action([frame_lvl0], frame_lvl0)
     assert agent._fleet_plan_started is True
     assert len(agent.fleet_plan_queue) > 0

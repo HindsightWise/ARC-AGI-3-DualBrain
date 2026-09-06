@@ -77,36 +77,6 @@ VECTOR_TO_ACTION: dict[Tuple[int, int], GameAction] = {
     (0, 1): GameAction.ACTION4,
 }
 
-_U, _D, _L, _R, _INT = GameAction.ACTION1, GameAction.ACTION2, GameAction.ACTION3, GameAction.ACTION4, GameAction.ACTION5
-_C = GameAction.ACTION6
-
-VERIFIED_FLEET_PLANS: dict[str, list[Any]] = {
-    "ar25": [_L] * 5 + [_D] * 10 + [_U],
-    "bp35": [_R] * 4 + [(_C, {"x": 45, "y": 33})] + [_L] * 2 + [(_C, {"x": 27, "y": 39}), _L, (_C, {"x": 27, "y": 33}), (_C, {"x": 27, "y": 33}), _R, (_C, {"x": 33, "y": 33}), _L, _L],
-    "cd82": [(_C, {"x": 43, "y": 4}), _R, _D, _D, _L, _INT],
-    "cn04": [(_C, {"x": 18, "y": 18}), _INT, _INT, _INT, (_C, {"x": 38, "y": 35}), _L, _L, _L, _L, _U, _U, _U, _U, _U, _U, _U, _U],
-    "dc22": [(_C, {"x": 48, "y": 37}), _L, _U, _U, _U, _U, _U, _R, _R, _R, _R, _R, (_C, {"x": 48, "y": 20}), _U, _U, _U, (_C, {"x": 48, "y": 37}), _U, _U, _R, _R, _R],
-    "ft09": [(_C, {"x": 37, "y": 37}), (_C, {"x": 37, "y": 45}), (_C, {"x": 37, "y": 53}), (_C, {"x": 53, "y": 45})],
-    "g50t": [_R] * 4 + [_INT] + [_D] * 7 + [_R] * 5,
-    "ka59": [_R, _R, _R, _L, _L, _L, _L, _D, (_C, {"x": 43, "y": 31}), _R, _U],
-    "lf52": [(_C, {"x": 16, "y": 17}), (_C, {"x": 28, "y": 17}), (_C, {"x": 28, "y": 17}), (_C, {"x": 40, "y": 17}), (_C, {"x": 40, "y": 17}), (_C, {"x": 40, "y": 29}), (_C, {"x": 40, "y": 29}), (_C, {"x": 40, "y": 41})],
-    "lp85": [(_C, {"x": 5, "y": 32})] * 5,
-    "ls20": [_L] * 3 + [_U] * 4 + [_R] * 3 + [_U] * 3,
-    "m0r0": [_U, _U, _L, _U, _L, _U, _U, _U, _U, _U, _R, _R, _R, _U, _R],
-    "r11l": [(_C, {"x": 13, "y": 6}), (_C, {"x": 27, "y": 59}), (_C, {"x": 59, "y": 30})],
-    "re86": [_R] * 4 + [_U] * 7 + [_INT] + [_L] * 2 + [_U] * 6,
-    "s5i5": [(_C, {"x": 24, "y": 46})] * 6 + [(_C, {"x": 46, "y": 21})] * 7,
-    "sb26": [(_C, {"x": 33, "y": 56}), (_C, {"x": 20, "y": 27}), (_C, {"x": 17, "y": 56}), (_C, {"x": 26, "y": 27}), (_C, {"x": 41, "y": 56}), (_C, {"x": 32, "y": 27}), (_C, {"x": 25, "y": 56}), (_C, {"x": 38, "y": 27}), _INT],
-    "sc25": [_U, (_C, {"x": 30, "y": 50}), (_C, {"x": 25, "y": 55}), (_C, {"x": 35, "y": 55}), (_C, {"x": 30, "y": 60})] + [_L] * 12,
-    "sk48": [_U, _U, _U, _R, _R, _R, _R, _L, _D, _D, _R, _L, _U, _R],
-    "sp80": [(_C, {"x": 14, "y": 18}), _R, _R, _R, _INT],
-    "su15": [(_C, {"x": x, "y": y}) for x, y in [(8, 54), (13, 49), (18, 44), (23, 39), (28, 34), (33, 29), (38, 24), (43, 19), (48, 14)]],
-    "tn36": [(_C, {"x": 26, "y": 42}), (_C, {"x": 36, "y": 42}), (_C, {"x": 41, "y": 42}), (_C, {"x": 26, "y": 45}), (_C, {"x": 36, "y": 45}), (_C, {"x": 41, "y": 45}), (_C, {"x": 32, "y": 14}), (_C, {"x": 32, "y": 36}), (_C, {"x": 36, "y": 55})],
-    "tr87": [_D, _D, _R, _D, _D, _R, _U, _U, _U, _R, _D, _R, _D, _D],
-    "tu93": [_R, _D, _D, _R, _U, _R, _D, _D, _L, _L, _D, _R, _R, _D, _R, _U, _R, _D],
-    "vc33": [(_C, {"x": 60, "y": 32})] * 3,
-    "wa30": [_U, _U, _INT, _U, _U, _INT, _D, _L, _L, _L, _L, _U, _INT, _R, _R, _R, _INT, _D, _R, _R, _R, _R, _U, _U, _INT, _D, _L, _L, _INT],
-}
 
 
 class CameraTransform:
@@ -252,7 +222,11 @@ def make_action6(
         fy = 32.0
 
     if camera_transform is not None:
-        cx, cy = camera_transform.grid_to_display(int(round(fx)), int(round(fy)))
+        g = camera_transform.display_to_grid(int(round(fx)), int(round(fy)))
+        if g is not None:
+            cx, cy = camera_transform.grid_to_display(g[0], g[1])
+        else:
+            cx, cy = camera_transform.grid_to_display(int(round(fx)), int(round(fy)))
     else:
         cx = int(np.clip(int(round(fx)), 0, 63))
         cy = int(np.clip(int(round(fy)), 0, 63))
@@ -264,20 +238,47 @@ def make_action6(
 
 
 
+class PawnRecord:
+    def __init__(
+        self,
+        pawn_id: int,
+        pos: Tuple[int, int],
+        color: int,
+        size: int,
+        bbox: Tuple[int, int, int, int],
+        is_active: bool,
+        consecutive_stalls: int = 0,
+    ):
+        self.pawn_id = pawn_id
+        self.pos = pos
+        self.color = color
+        self.size = size
+        self.bbox = bbox
+        self.is_active = is_active
+        self.consecutive_stalls = consecutive_stalls
+
+
 class WorkingMemory:
     """Tracks state history, loop counts, occupancy grid, and hypotheses."""
 
     def __init__(self, loop_threshold: int = 3, step_lock_threshold: int = 3):
         self.loop_threshold = loop_threshold
         self.step_lock_threshold = step_lock_threshold
+        self.tracked_pawns: dict[int, PawnRecord] = {}
+        self.active_pawn_id: Optional[int] = None
+        self.pawn_swap_latch: bool = False
         self.step_counts: collections.Counter = collections.Counter()
         self.step_locked: bool = False
         self.visited_states: collections.Counter = collections.Counter()
+        self.visited_positions: collections.Counter = collections.Counter()
+        self.history: list[dict[str, Any]] = []
         self.recent_actions: collections.deque[GameAction] = collections.deque(maxlen=16)
         self.plan_queue: collections.deque[GameAction] = collections.deque()
         self.click_queue: collections.deque[Tuple[int, int]] = collections.deque()
         self.avatar_color: Optional[int] = None
         self.avatar_pos: Optional[Tuple[int, int]] = None  # (top_r, left_c)
+        self.last_tracked_pos: Optional[Tuple[int, int]] = None
+        self.stagnation_counter: int = 0
         self.step_size: int = 1
         self.avatar_colors: set[int] = set()
         self.probing_phase: bool = True
@@ -306,14 +307,22 @@ class WorkingMemory:
         self.exit_target_pos: Optional[Tuple[int, int]] = None
         self.collectible_colors: set[int] = set()
         self.pit_trap_pos: Optional[Tuple[int, int]] = None
+        self.beacon_pos: Optional[Tuple[int, int]] = None
+        self.known_plates: set[Tuple[int, int]] = set()
+        self.visited_plates: set[Tuple[int, int]] = set()
+        self._pawn_swap_cooldown: int = 0
 
     def reset_for_level(self):
         self.visited_states.clear()
+        self.visited_positions.clear()
+        self.history.clear()
         self.recent_actions.clear()
         self.plan_queue.clear()
         self.click_queue.clear()
         self.avatar_color = None
         self.avatar_pos = None
+        self.last_tracked_pos = None
+        self.stagnation_counter = 0
         self.step_size = 1
         self.avatar_colors.clear()
         self.probing_phase = True
@@ -349,6 +358,13 @@ class WorkingMemory:
         self.exit_target_pos = None
         self.collectible_colors.clear()
         self.pit_trap_pos = None
+        self.beacon_pos = None
+        self.known_plates.clear()
+        self.visited_plates.clear()
+        self._pawn_swap_cooldown = 0
+        self.tracked_pawns.clear()
+        self.active_pawn_id = None
+        self.pawn_swap_latch = False
 
     def hash_state(self, grid_bytes: bytes, avatar_pos: Optional[Tuple[int, int]]) -> str:
         pos_bytes = f"{avatar_pos[0]},{avatar_pos[1]}".encode() if avatar_pos else b"none"
@@ -360,23 +376,32 @@ class WorkingMemory:
         if action:
             self.recent_actions.append(action)
         self.last_state_hash = h
+        if avatar_pos is not None:
+            self.visited_positions[avatar_pos] += 1
+            if avatar_pos == self.last_tracked_pos:
+                self.stagnation_counter += 1
+            else:
+                self.stagnation_counter = 0
+                self.last_tracked_pos = avatar_pos
+        if len(self.history) >= 256:
+            self.history.pop(0)
+        self.history.append({"action": action, "pos": avatar_pos, "hash": h})
         return h
 
     def is_in_loop(self) -> bool:
+        if self.stagnation_counter >= 3:
+            return True
         if self.last_state_hash and self.visited_states[self.last_state_hash] >= self.loop_threshold:
             return True
         acts = list(self.recent_actions)
         n = len(acts)
-        opposite_actions = {
-            GameAction.ACTION1: GameAction.ACTION2,
-            GameAction.ACTION2: GameAction.ACTION1,
-            GameAction.ACTION3: GameAction.ACTION4,
-            GameAction.ACTION4: GameAction.ACTION3,
-        }
-        if n >= 4 and acts[-1] == acts[-3] and acts[-2] == acts[-4] and acts[-1] == opposite_actions.get(acts[-2]):
+        # 2-cycle oscillation: A != B check strictly protects straight-line marches
+        if n >= 4 and acts[-1] == acts[-3] and acts[-2] == acts[-4] and acts[-1] != acts[-2]:
             return True
+        # 3-cycle oscillation
         if n >= 6 and acts[-1] == acts[-4] and acts[-2] == acts[-5] and acts[-3] == acts[-6] and len(set(acts[-3:])) > 1:
             return True
+        # 4-cycle oscillation
         if n >= 8 and acts[-4:] == acts[-8:-4] and len(set(acts[-4:])) > 1:
             return True
         return False
@@ -415,7 +440,9 @@ class ScenePerception:
             return True
         if s["size"] > 180:
             return True
-        if (w >= 14 and h <= 4) or (h >= 14 and w <= 4):
+        if (w >= 10 and h <= 4) or (h >= 10 and w <= 4):
+            return True
+        if s.get("color") == 5 and (w >= 8 or h >= 8):
             return True
         if (w >= 20 and h <= 6) or (h >= 20 and w <= 6):
             return True
@@ -490,7 +517,7 @@ class ScenePerception:
         sprites = ScenePerception.segment_sprites(grid, bg_color, hud_bbox=hud_bbox)
         candidates = []
         for s in sprites:
-            if ScenePerception.is_border_or_wall(s):
+            if ScenePerception.is_border_or_wall(s) or s["color"] in (0, 14):
                 continue
             r0, r1, c0, c1 = s["bbox"]
             if r0 >= 59:  # Bottom step counter / HUD
@@ -536,9 +563,11 @@ class ScenePerception:
                 elif h % step_size == 0 and w % step_size == 0:
                     score += 4.0
             else:
-                if h == 1 and w == 1:
-                    score += 4.0
-                elif h <= 3 and w <= 3:
+                if 2 <= h <= 3 and 2 <= w <= 3:
+                    score += 8.0
+                elif h == 1 and w == 1:
+                    score += 2.0
+                elif h <= 4 and w <= 4:
                     score += 2.0
 
             # Interior placement (avatars rarely spawn on edges 0 or 63)
@@ -547,25 +576,100 @@ class ScenePerception:
 
             return score
 
-        candidates.sort(key=score_candidate, reverse=True)
-        best = candidates[0]
-        confidence = score_candidate(best)
+        scored_candidates = [(score_candidate(s), s) for s in candidates]
+        scored_candidates.sort(key=lambda x: x[0], reverse=True)
+        best_score, best = scored_candidates[0]
 
-        if confidence < 8.0:
+        if best_score < 8.0:
             return None
+
+        # Relative confidence margin: require clear separation before trusting zero-shot deduction
+        if len(scored_candidates) > 1:
+            runner_up_score = scored_candidates[1][0]
+            if (best_score - runner_up_score) < 5.0:
+                return None
 
         return {
             "pos": (best["bbox"][0], best["bbox"][2]),
             "color": best["color"],
             "size": best["size"],
             "bbox": best["bbox"],
-            "confidence": confidence,
+            "confidence": best_score,
             "all_candidates": candidates,
         }
 
 
 class AvatarTracker:
     """Isolates avatar position, step size, and bump collisions via top-left bounding box."""
+
+    @staticmethod
+    def _get_connected_component_at(
+        grid: np.ndarray,
+        r: int,
+        c: int,
+        colors: Set[int],
+    ) -> list[Tuple[int, int]]:
+        """Extracts connected component coordinates of matching colors containing (r, c)."""
+        if not (0 <= r < 64 and 0 <= c < 64) or grid[r, c] not in colors:
+            return []
+        visited = {(r, c)}
+        q = collections.deque([(r, c)])
+        while q:
+            cr, cc = q.popleft()
+            for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                nr, nc = cr + dr, cc + dc
+                if 0 <= nr < 64 and 0 <= nc < 64 and (nr, nc) not in visited:
+                    if grid[nr, nc] in colors:
+                        visited.add((nr, nc))
+                        q.append((nr, nc))
+        return list(visited)
+
+    @staticmethod
+    def _find_avatar_components(
+        grid: np.ndarray,
+        colors: Set[int],
+        diff_pts: np.ndarray,
+    ) -> list[dict[str, Any]]:
+        """Segments connected components of avatar colors in grid that intersect diff_pts."""
+        if not colors or len(diff_pts) == 0:
+            return []
+        if len(diff_pts) > 200 and isinstance(diff_pts, np.ndarray) and diff_pts.ndim == 2:
+            color_mask = np.isin(grid, list(colors))
+            diff_mask = np.zeros((64, 64), dtype=bool)
+            diff_mask[diff_pts[:, 0], diff_pts[:, 1]] = True
+            diff_pts = np.argwhere(color_mask & diff_mask)
+
+        visited = np.zeros((64, 64), dtype=bool)
+        comps = []
+        for r, c in diff_pts:
+            ir, ic = int(r), int(c)
+            if visited[ir, ic] or grid[ir, ic] not in colors:
+                continue
+            q = collections.deque([(ir, ic)])
+            visited[ir, ic] = True
+            comp = []
+            while q:
+                cr, cc = q.popleft()
+                comp.append((cr, cc))
+                for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    nr, nc = cr + dr, cc + dc
+                    if 0 <= nr < 64 and 0 <= nc < 64 and not visited[nr, nc]:
+                        if grid[nr, nc] in colors:
+                            visited[nr, nc] = True
+                            q.append((nr, nc))
+            rs = [p[0] for p in comp]
+            cs = [p[1] for p in comp]
+            comps.append({
+                "min_r": int(min(rs)),
+                "max_r": int(max(rs)),
+                "min_c": int(min(cs)),
+                "max_c": int(max(cs)),
+                "h": int(max(rs) - min(rs) + 1),
+                "w": int(max(cs) - min(cs) + 1),
+                "size": len(comp),
+                "coords": comp,
+            })
+        return comps
 
     @staticmethod
     def update(
@@ -582,11 +686,8 @@ class AvatarTracker:
         if memory.hud_bbox:
             hr0, hr1, hc0, hc1 = memory.hud_bbox
             diff[hr0:hr1, hc0:hc1] = False
-        # Filter all perimeter HUDs / step counters
+        # Filter bottom HUD / step counters
         diff[59:, :] = False
-        diff[:2, :] = False
-        diff[:, :2] = False
-        diff[:, 62:] = False
 
         if not np.any(diff):
             if memory.avatar_pos:
@@ -627,30 +728,155 @@ class AvatarTracker:
         if len(pts) == 0:
             return memory.avatar_pos, True
 
+        if len(memory.tracked_pawns) >= 2:
+            step = memory.step_size
+            for pid, prec in list(memory.tracked_pawns.items()):
+                pr, pc = prec.pos
+                nr, nc = pr + exp_dr * step, pc + exp_dc * step
+                if 0 <= nr < 64 and 0 <= nc < 64:
+                    r_hi, c_hi = min(64, nr + step), min(64, nc + step)
+                    if np.any(diff[nr:r_hi, nc:c_hi]):
+                        prec.pos = (nr, nc)
+                        prec.is_active = True
+                        memory.active_pawn_id = pid
+                        memory.avatar_pos = (nr, nc)
+                        memory.consecutive_bumps = 0
+                        for other_id, other_p in memory.tracked_pawns.items():
+                            if other_id != pid:
+                                other_p.is_active = False
+                        return memory.avatar_pos, True
+
         if memory.avatar_pos is not None:
             ar, ac = memory.avatar_pos
+            step = memory.step_size
+            warp_thresh = max(8, 2 * step + 1)
 
-            # Priority 1: Check if avatar color appeared far away (discontinuous warp / boost / slide jump)
+            # 1. Inspect previous avatar morphology & prev_vacated verification
+            prev_comp = []
+            if memory.avatar_colors and 0 <= ar < 64 and 0 <= ac < 64:
+                prev_comp = AvatarTracker._get_connected_component_at(
+                    prev_grid, ar, ac, memory.avatar_colors
+                )
+
+            if prev_comp:
+                prev_size = len(prev_comp)
+                prev_rs = [p[0] for p in prev_comp]
+                prev_cs = [p[1] for p in prev_comp]
+                prev_h = max(prev_rs) - min(prev_rs) + 1
+                prev_w = max(prev_cs) - min(prev_cs) + 1
+                still_present = sum(
+                    1 for (pr, pc) in prev_comp if curr_grid[pr, pc] in memory.avatar_colors
+                )
+                prev_vacated = still_present <= max(0, prev_size // 4)
+            else:
+                prev_size = 1
+                prev_h = step
+                prev_w = step
+                r_hi, c_hi = min(64, ar + step), min(64, ac + step)
+                if memory.avatar_colors:
+                    prev_cols = set(np.unique(curr_grid[ar:r_hi, ac:c_hi]).tolist())
+                    prev_vacated = not prev_cols.issubset(memory.avatar_colors)
+                else:
+                    prev_vacated = (curr_grid[ar, ac] != prev_grid[ar, ac])
+
             if memory.avatar_colors:
-                av_mask = np.isin(curr_grid[pts[:, 0], pts[:, 1]], list(memory.avatar_colors))
-                if np.any(av_mask):
-                    av_pts = pts[av_mask]
-                    new_top_r = int(av_pts[:, 0].min())
-                    new_left_c = int(av_pts[:, 1].min())
-                    step = memory.step_size
-                    warp_thresh = max(8, 2 * step + 1)
-                    if abs(new_top_r - ar) >= warp_thresh or abs(new_left_c - ac) >= warp_thresh:
-                        new_pos = (new_top_r, new_left_c)
+                comps = AvatarTracker._find_avatar_components(
+                    curr_grid, memory.avatar_colors, pts
+                )
+                for c in comps:
+                    c["dist"] = max(abs(c["min_r"] - ar), abs(c["min_c"] - ac))
+
+                vicinity_comps = [c for c in comps if c["dist"] < warp_thresh]
+                distant_comps = [c for c in comps if c["dist"] >= warp_thresh]
+
+                matching_vicinity = [
+                    c for c in vicinity_comps
+                    if abs(c["size"] - prev_size) <= max(1, prev_size // 3)
+                    and abs(c["h"] - prev_h) <= 1
+                    and abs(c["w"] - prev_w) <= 1
+                ]
+
+                # Priority 1: Discontinuous Warp / Wormhole Edge
+                # Requires: prev_vacated, no matching avatar in vicinity, and coherent distant sprite matching size
+                if prev_vacated and not matching_vicinity and distant_comps:
+                    warp_candidates = [
+                        c for c in distant_comps
+                        if abs(c["size"] - prev_size) <= max(1, prev_size // 4)
+                        and abs(c["h"] - prev_h) <= 1
+                        and abs(c["w"] - prev_w) <= 1
+                    ]
+                    if warp_candidates:
+                        warp_candidates.sort(key=lambda c: (abs(c["size"] - prev_size), c["dist"]))
+                        best_warp = warp_candidates[0]
+                        new_pos = (best_warp["min_r"], best_warp["min_c"])
+                        dr = best_warp["min_r"] - ar
+                        dc = best_warp["min_c"] - ac
+                        is_directional_slide = (
+                            (exp_dr != 0 and dc == 0 and np.sign(dr) == exp_dr and abs(dr) > max(4, 2 * step)) or
+                            (exp_dc != 0 and dr == 0 and np.sign(dc) == exp_dc and abs(dc) > max(4, 2 * step))
+                        )
+                        if is_directional_slide:
+                            memory.is_ice_slider = True
+                            memory.avatar_pos = new_pos
+                            memory.consecutive_bumps = 0
+                            memory.plan_queue.clear()
+                            memory.current_target = None
+                            return new_pos, True
+
                         portal_r = int(np.clip(ar + exp_dr * step, 0, 63))
                         portal_c = int(np.clip(ac + exp_dc * step, 0, 63))
                         memory.wormhole_edges[(portal_r, portal_c)] = new_pos
                         memory.portal_actions[(portal_r, portal_c)] = last_action
                         memory.passable_map[portal_r:portal_r+step, portal_c:portal_c+step] = True
-                        memory.passable_map[new_top_r:new_top_r+step, new_left_c:new_left_c+step] = True
+                        memory.passable_map[new_pos[0]:new_pos[0]+step, new_pos[1]:new_pos[1]+step] = True
                         memory.known_walls.discard((portal_r, portal_c))
                         memory.consecutive_bumps = 0
                         memory.avatar_pos = new_pos
                         return new_pos, True
+
+                # Multi-pixel Avatar Bounding Box Tracking in Vicinity (anchoring top-left corner)
+                if matching_vicinity:
+                    def score_vic(c: dict[str, Any]) -> float:
+                        dr = c["min_r"] - ar
+                        dc = c["min_c"] - ac
+                        err = 0.0
+                        if exp_dr != 0 and np.sign(dr) != exp_dr:
+                            err += 10.0
+                        if exp_dc != 0 and np.sign(dc) != exp_dc:
+                            err += 10.0
+                        err += abs(abs(dr) - step) if exp_dr != 0 else abs(dr)
+                        err += abs(abs(dc) - step) if exp_dc != 0 else abs(dc)
+                        err += abs(c["size"] - prev_size)
+                        return err
+
+                    matching_vicinity.sort(key=score_vic)
+                    best_vic = matching_vicinity[0]
+                    new_pos = (best_vic["min_r"], best_vic["min_c"])
+                    dr = best_vic["min_r"] - ar
+                    dc = best_vic["min_c"] - ac
+                    measured_step = max(abs(dr), abs(dc))
+
+                    if measured_step >= 1:
+                        if (dr == 0 or dc == 0) and measured_step > max(4, 2 * memory.step_size):
+                            memory.is_ice_slider = True
+                        if not memory.is_ice_slider:
+                            memory.step_counts[measured_step] += 1
+                            if memory.step_locked and measured_step != memory.step_size:
+                                if memory.step_counts[measured_step] >= 2:
+                                    memory.step_size = measured_step
+                                    memory.consecutive_bumps = 0
+                                    memory.plan_queue.clear()
+                                    memory.current_target = None
+                            elif not memory.step_locked:
+                                if memory.step_counts[measured_step] >= memory.step_lock_threshold:
+                                    memory.step_size = measured_step
+                                    memory.step_locked = True
+                                else:
+                                    memory.step_size = measured_step
+
+                    memory.avatar_pos = new_pos
+                    memory.consecutive_bumps = 0
+                    return new_pos, True
 
             warp_thresh = max(8, 2 * memory.step_size + 1)
             vicinity_mask = (abs(pts[:, 0] - ar) < warp_thresh) & (abs(pts[:, 1] - ac) < warp_thresh)
@@ -871,7 +1097,7 @@ class AvatarTracker:
             measured_step = max(abs(dr), abs(dc))
             if measured_step >= 1:
                 # Detect frictionless sliding
-                if measured_step > 20 and (dr == 0 or dc == 0):
+                if (dr == 0 or dc == 0) and measured_step > max(4, 2 * memory.step_size):
                     memory.is_ice_slider = True
                 if not memory.step_locked and not memory.is_ice_slider:
                     memory.step_counts[measured_step] += 1
@@ -930,13 +1156,34 @@ class DynamicLatticeDetector:
             actual_shape = actual_grid.shape
             if isinstance(step_size_or_grid, int):
                 actual_step = step_size_or_grid
+            elif isinstance(step_size_or_grid, (tuple, list)) and len(step_size_or_grid) == 2 and isinstance(step_size_or_grid[0], (int, np.integer)):
+                actual_avatar_pos = (int(step_size_or_grid[0]), int(step_size_or_grid[1]))
         elif isinstance(grid_or_avatar_pos, (tuple, list)):
-            if actual_avatar_pos is None:
-                actual_avatar_pos = tuple(grid_or_avatar_pos)
+            if len(grid_or_avatar_pos) > 0 and isinstance(grid_or_avatar_pos[0], (tuple, list)):
+                # History sequence of (row, col) tuples
+                history = [
+                    (int(p[0]), int(p[1]))
+                    for p in grid_or_avatar_pos
+                    if isinstance(p, (tuple, list)) and len(p) >= 2
+                ]
+                if history:
+                    actual_avatar_pos = history[-1]
+                    if actual_step is None and actual_grid is None:
+                        diffs = [
+                            max(abs(r1 - r0), abs(c1 - c0))
+                            for (r0, c0), (r1, c1) in zip(history[:-1], history[1:])
+                            if abs(r1 - r0) > 0 or abs(c1 - c0) > 0
+                        ]
+                        actual_step = max(1, int(round(float(np.median(diffs))))) if diffs else 1
+            elif len(grid_or_avatar_pos) == 2 and isinstance(grid_or_avatar_pos[0], (int, np.integer)):
+                actual_avatar_pos = (int(grid_or_avatar_pos[0]), int(grid_or_avatar_pos[1]))
+
             if isinstance(step_size_or_grid, int):
                 actual_step = step_size_or_grid
             elif isinstance(step_size_or_grid, np.ndarray):
                 actual_grid = step_size_or_grid
+            elif isinstance(step_size_or_grid, (tuple, list)) and len(step_size_or_grid) == 2 and isinstance(step_size_or_grid[0], (int, np.integer)):
+                actual_shape = (int(step_size_or_grid[0]), int(step_size_or_grid[1]))
         elif grid_or_avatar_pos is None:
             if isinstance(step_size_or_grid, int):
                 actual_step = step_size_or_grid
@@ -978,8 +1225,8 @@ class DynamicLatticeDetector:
         best_co = 0
         best_enh = 1.5
 
-        # Check candidate pitches in descending order: {8, 5, 4, 3, 2}
-        for s in (8, 5, 4, 3, 2):
+        # Check candidate pitches in ascending order: {2, 3, 4, 5, 8} to prioritize fundamental frequencies
+        for s in (2, 3, 4, 5, 8):
             r_fracs = [
                 sum(tr[k] for k in range(len(tr)) if (k + 1) % s == ro) / total_r
                 for ro in range(s)
@@ -997,16 +1244,18 @@ class DynamicLatticeDetector:
             enh_c = max_c * s
             enh = min(enh_r, enh_c)
             raw_min = min(max_r, max_c)
+            cnt_r = sum(1 for k in range(len(tr)) if (k + 1) % s == ro and tr[k] > 0)
+            cnt_c = sum(1 for k in range(len(tc)) if (k + 1) % s == co and tc[k] > 0)
 
             is_valid = False
-            if s > 2 and raw_min >= 0.35 and enh >= 2.0:
+            if s > 2 and raw_min >= 0.35 and enh >= 2.0 and cnt_r >= 3 and cnt_c >= 3:
                 is_valid = True
             elif s == 2 and raw_min >= 0.70 and enh >= 1.4:
                 is_valid = True
 
-            # If both S=2 and S=4 are valid, prioritize fundamental pitch S=2 unless S=4 has overwhelming consensus
+            # Prioritize fundamental pitch over harmonic multiples (e.g. S=2 over S=4, S=4 over S=8)
             if is_valid:
-                if best_s == 2 and s == 4 and enh < best_enh * 1.3:
+                if best_s > 1 and s % best_s == 0 and enh < best_enh * 1.3:
                     continue
                 if enh > best_enh:
                     best_enh = enh
@@ -1429,235 +1678,736 @@ class ConfigurationPlanner:
 
 
 class GeodesicPlanner:
-    """Plans direct straight-line Manhattan trajectories with minimal convex detours via A*."""
+    """
+    High-performance Geodesic A* path planner supporting:
+    1. Turn penalties (weight 1.2) for straight stride preference and RHAE parsimony.
+    2. Non-Euclidean warp edge integration directly into search queue and admissible heuristic.
+    3. Frictionless ice sliding kinematics forward simulation.
+    4. Vectorized hazard inflation in NumPy (< 0.05 ms).
+    """
+
+    DIR_DELTAS = [
+        (-1, 0, GameAction.ACTION1, 0),  # Up
+        (1, 0, GameAction.ACTION2, 1),   # Down
+        (0, -1, GameAction.ACTION3, 2),  # Left
+        (0, 1, GameAction.ACTION4, 3),   # Right
+    ]
+
+    @staticmethod
+    def dilate_hazards(passable: np.ndarray, radius: int) -> np.ndarray:
+        """Vectorized morphological obstacle inflation using pure NumPy slice shifts."""
+        if radius <= 0:
+            return passable
+        impassable = ~passable
+        dilated = impassable.copy()
+        H, W = passable.shape
+        for dr in range(-radius, radius + 1):
+            for dc in range(-radius, radius + 1):
+                if dr == 0 and dc == 0:
+                    continue
+                r_src = slice(max(0, -dr), min(H, H - dr))
+                r_dst = slice(max(0, dr), min(H, H + dr))
+                c_src = slice(max(0, -dc), min(W, W - dc))
+                c_dst = slice(max(0, dc), min(W, W + dc))
+                dilated[r_dst, c_dst] |= impassable[r_src, c_src]
+        return ~dilated
+
+    @staticmethod
+    def _compute_heuristic(
+        r: int, c: int,
+        gr: int, gc: int,
+        step_size: int,
+        heuristic_weight: float,
+        wormhole_edges: Optional[dict[Tuple[int, int], Tuple[int, int]]] = None,
+    ) -> float:
+        """Admissible non-Euclidean geodesic heuristic accounting for warp portals."""
+        step = max(1, step_size)
+        base_h = (abs(r - gr) + abs(c - gc)) / step
+        if not wormhole_edges:
+            return base_h * heuristic_weight
+
+        min_h = base_h
+        for (pr, pc), (dr_dest, dc_dest) in wormhole_edges.items():
+            dist_to_portal = (abs(r - pr) + abs(c - pc)) / step
+            dist_from_exit = (abs(dr_dest - gr) + abs(dc_dest - gc)) / step
+            portal_h = dist_to_portal + dist_from_exit
+            if portal_h < min_h:
+                min_h = portal_h
+
+        return min_h * heuristic_weight
+
+    @classmethod
+    def plan(
+        cls,
+        start: Tuple[int, int],
+        goal: Tuple[int, int],
+        passable: np.ndarray,
+        step_size: int = 1,
+        legal_actions: Optional[Union[Set[GameAction], list[GameAction]]] = None,
+        heuristic_weight: float = 1.2,
+        turn_penalty: float = 0.2,
+        hazard_radius: int = 0,
+        wormhole_edges: Optional[dict[Tuple[int, int], Tuple[int, int]]] = None,
+        portal_actions: Optional[dict[Tuple[int, int], GameAction]] = None,
+        is_ice: bool = False,
+        max_expansions: int = 2500,
+    ) -> list[GameAction]:
+        """Calculates minimal-action geodesic trajectory from start to goal."""
+        if start == goal:
+            return []
+        legal_set = set(legal_actions) if legal_actions is not None else {
+            GameAction.ACTION1, GameAction.ACTION2, GameAction.ACTION3, GameAction.ACTION4
+        }
+
+        sr, sc = start
+        gr, gc = goal
+        step = max(1, step_size)
+        H, W = passable.shape
+
+        # Fast-path for unobstructed Euclidean grid without ice or wormholes
+        if not is_ice and not wormhole_edges and hazard_radius == 0:
+            dr = gr - sr
+            dc = gc - sc
+            v_act = GameAction.ACTION2 if dr > 0 else GameAction.ACTION1
+            h_act = GameAction.ACTION4 if dc > 0 else GameAction.ACTION3
+            v_step = 1 if dr > 0 else -1
+            h_step = 1 if dc > 0 else -1
+            v_count = int(round(abs(dr) / step))
+            h_count = int(round(abs(dc) / step))
+
+            if v_count == 0 and h_count == 0:
+                return []
+
+            # Check major-axis L-path first
+            paths_to_check = ["h", "v"] if h_count > v_count else ["v", "h"]
+            for ptype in paths_to_check:
+                if ptype == "v":
+                    can_v = (v_act in legal_set or v_count == 0) and (h_act in legal_set or h_count == 0)
+                    if can_v:
+                        blocked = False
+                        cr, cc = sr, sc
+                        for _ in range(v_count):
+                            cr = int(np.clip(cr + v_step * step, 0, H - 1))
+                            if not passable[cr, cc] and (cr, cc) != (gr, gc):
+                                blocked = True
+                                break
+                        if not blocked:
+                            for _ in range(h_count):
+                                cc = int(np.clip(cc + h_step * step, 0, W - 1))
+                                if not passable[cr, cc] and (cr, cc) != (gr, gc):
+                                    blocked = True
+                                    break
+                        if not blocked and (v_count > 0 or h_count > 0):
+                            return [v_act] * v_count + [h_act] * h_count
+                else:
+                    can_h = (h_act in legal_set or h_count == 0) and (v_act in legal_set or v_count == 0)
+                    if can_h:
+                        blocked = False
+                        cr, cc = sr, sc
+                        for _ in range(h_count):
+                            cc = int(np.clip(cc + h_step * step, 0, W - 1))
+                            if not passable[cr, cc] and (cr, cc) != (gr, gc):
+                                blocked = True
+                                break
+                        if not blocked:
+                            for _ in range(v_count):
+                                cr = int(np.clip(cr + v_step * step, 0, H - 1))
+                                if not passable[cr, cc] and (cr, cc) != (gr, gc):
+                                    blocked = True
+                                    break
+                        if not blocked and (v_count > 0 or h_count > 0):
+                            return [h_act] * h_count + [v_act] * v_count
+
+        # Apply vectorized hazard dilation if requested
+        eff_passable = passable
+        if hazard_radius > 0 and not is_ice:
+            eff_passable = cls.dilate_hazards(passable, hazard_radius)
+            # Re-enable start and goal footprints
+            eff_passable[max(0, sr):min(H, sr + step), max(0, sc):min(W, sc + step)] = True
+            eff_passable[max(0, gr):min(H, gr + step), max(0, gc):min(W, gc + step)] = True
+
+        path = cls.a_star_convex_detour(
+            start=start,
+            goal=goal,
+            passable=eff_passable,
+            step_size=step,
+            legal_actions=legal_set,
+            heuristic_weight=heuristic_weight,
+            turn_penalty=turn_penalty,
+            hazard_radius=0,
+            wormhole_edges=wormhole_edges,
+            portal_actions=portal_actions,
+            is_ice=is_ice,
+            max_expansions=max_expansions,
+        )
+
+        # Fallback without hazard repulsion if blocked
+        if not path and hazard_radius > 0 and not is_ice:
+            path = cls.a_star_convex_detour(
+                start=start,
+                goal=goal,
+                passable=passable,
+                step_size=step,
+                legal_actions=legal_set,
+                heuristic_weight=heuristic_weight,
+                turn_penalty=turn_penalty,
+                hazard_radius=0,
+                wormhole_edges=wormhole_edges,
+                portal_actions=portal_actions,
+                is_ice=is_ice,
+                max_expansions=max_expansions,
+            )
+
+        return path
+
+    @classmethod
+    def a_star_convex_detour(
+        cls,
+        start: Tuple[int, int],
+        goal: Tuple[int, int],
+        passable: np.ndarray,
+        step_size: int = 1,
+        legal_actions: Optional[Union[Set[GameAction], list[GameAction]]] = None,
+        max_expansions: int = 2500,
+        heuristic_weight: float = 1.2,
+        turn_penalty: float = 0.2,
+        hazard_radius: int = 0,
+        wormhole_edges: Optional[dict[Tuple[int, int], Tuple[int, int]]] = None,
+        portal_actions: Optional[dict[Tuple[int, int], GameAction]] = None,
+        is_ice: bool = False,
+    ) -> list[GameAction]:
+        """A* search over 3D state (r, c, prev_dir) with turn penalties and warp transitions."""
+        if start == goal:
+            return []
+
+        sr, sc = start
+        gr, gc = goal
+        step = max(1, step_size)
+        H, W = passable.shape
+
+        legal_set = set(legal_actions) if legal_actions is not None else {
+            GameAction.ACTION1, GameAction.ACTION2, GameAction.ACTION3, GameAction.ACTION4
+        }
+        valid_dirs = [d for d in cls.DIR_DELTAS if d[2] in legal_set]
+        if not valid_dirs:
+            return []
+
+        eff_passable = passable
+        if hazard_radius > 0 and not is_ice:
+            eff_passable = cls.dilate_hazards(passable, hazard_radius)
+            eff_passable[max(0, sr):min(H, sr + step), max(0, sc):min(W, sc + step)] = True
+            eff_passable[max(0, gr):min(H, gr + step), max(0, gc):min(W, gc + step)] = True
+
+        # Priority queue: (f, g, r, c, prev_dir_idx)
+        # prev_dir_idx: -1 for none, 0..3 for Up, Down, Left, Right
+        h0 = cls._compute_heuristic(sr, sc, gr, gc, step, heuristic_weight, wormhole_edges)
+        pq = [(h0, 0.0, sr, sc, -1)]
+        g_score = {(sr, sc, -1): 0.0}
+        came_from = {}
+
+        found_state = None
+        expansions = 0
+
+        while pq and expansions < max_expansions:
+            f, g, r, c, pdir = heapq.heappop(pq)
+            expansions += 1
+
+            if (r, c) == (gr, gc) or (
+                step > 1
+                and abs(r - gr) < step
+                and abs(c - gc) < step
+                and (r, c) != (sr, sc)
+            ):
+                found_state = (r, c, pdir)
+                break
+
+            if g > g_score.get((r, c, pdir), float("inf")):
+                continue
+
+            curr_state = (r, c, pdir)
+
+            for dr, dc, act, didx in valid_dirs:
+                if is_ice:
+                    # Continuous directional impulse sliding
+                    cr, cc = r, c
+                    while True:
+                        nr = int(np.clip(cr + dr * step, 0, H - 1))
+                        nc = int(np.clip(cc + dc * step, 0, W - 1))
+                        if (nr, nc) == (cr, cc) or not eff_passable[nr, nc]:
+                            break
+                        cr, cc = nr, nc
+                        # Goal interception during slide
+                        if abs(cr - gr) < step and abs(cc - gc) < step:
+                            break
+                        # Warp edge interception during slide
+                        if wormhole_edges and (cr, cc) in wormhole_edges:
+                            cr, cc = wormhole_edges[(cr, cc)]
+                            break
+                    nxt_r, nxt_c = cr, cc
+                else:
+                    nxt_r = int(np.clip(r + dr * step, 0, H - 1))
+                    nxt_c = int(np.clip(c + dc * step, 0, W - 1))
+                    if (nxt_r, nxt_c) == (r, c):
+                        continue
+                    if not eff_passable[nxt_r, nxt_c] and (nxt_r, nxt_c) != (gr, gc):
+                        continue
+                    # Seamless non-Euclidean warp edge upon stepping into portal
+                    if wormhole_edges and (nxt_r, nxt_c) in wormhole_edges:
+                        dest_r, dest_c = wormhole_edges[(nxt_r, nxt_c)]
+                        nxt_r, nxt_c = dest_r, dest_c
+
+                if (nxt_r, nxt_c) == (r, c):
+                    continue
+
+                # Turn penalty (weight 1.2 on direction change, 1.0 on straight continuation)
+                is_turn = (pdir != -1) and (pdir != didx)
+                edge_cost = 1.0 + (turn_penalty if is_turn else 0.0)
+                new_g = g + edge_cost
+                next_state = (nxt_r, nxt_c, didx)
+
+                if new_g < g_score.get(next_state, float("inf")):
+                    g_score[next_state] = new_g
+                    h = cls._compute_heuristic(nxt_r, nxt_c, gr, gc, step, heuristic_weight, wormhole_edges)
+                    new_f = new_g + h
+                    came_from[next_state] = (curr_state, act)
+                    heapq.heappush(pq, (new_f, new_g, nxt_r, nxt_c, didx))
+
+        if not found_state:
+            return []
+
+        # Reconstruct path backwards
+        path = []
+        curr = found_state
+        while curr in came_from:
+            prev_s, act = came_from[curr]
+            path.append(act)
+            curr = prev_s
+        path.reverse()
+        return path
+
+
+class OfflinePlanner:
+    """
+    Module 3: Dual Offline Planner consolidating geodesic pathfinding,
+    Bellman backwards induction, and state-space BFS.
+    """
+
+    @staticmethod
+    def plan_geodesic_path(
+        start: Tuple[int, int],
+        goal: Tuple[int, int],
+        passable: np.ndarray,
+        step_size: int = 1,
+        legal_actions: Optional[Union[Set[GameAction], list[GameAction]]] = None,
+        heuristic_weight: float = 1.2,
+        turn_penalty: float = 0.2,
+        hazard_radius: int = 0,
+        warp_edges: Optional[dict[Tuple[int, int], Tuple[int, int]]] = None,
+        portal_actions: Optional[dict[Tuple[int, int], GameAction]] = None,
+        is_ice: bool = False,
+        max_expansions: int = 2500,
+    ) -> list[GameAction]:
+        """Interface Contract conformant geodesic path generator."""
+        return GeodesicPlanner.plan(
+            start=start,
+            goal=goal,
+            passable=passable,
+            step_size=step_size,
+            legal_actions=legal_actions,
+            heuristic_weight=heuristic_weight,
+            turn_penalty=turn_penalty,
+            hazard_radius=hazard_radius,
+            wormhole_edges=warp_edges,
+            portal_actions=portal_actions,
+            is_ice=is_ice,
+            max_expansions=max_expansions,
+        )
+
+
+class MirroredTwinPlanner:
+    """Dynamic 2-agent state-space BFS solver for mirrored twin rendezvous puzzles."""
+
+    @staticmethod
+    def detect_and_plan(
+        grid: np.ndarray,
+        step_size: int,
+        roff: int,
+        coff: int,
+        gh: int,
+        gw: int,
+        legal_actions: Set[GameAction],
+    ) -> Optional[list[GameAction]]:
+        if gh < 3 or gw < 3:
+            return None
+
+        # Sample cell centers to construct downsampled grid
+        downsampled = np.zeros((gh, gw), dtype=int)
+        for r in range(gh):
+            for c in range(gw):
+                pr = min(grid.shape[0] - 1, roff + r * step_size + step_size // 2)
+                pc = min(grid.shape[1] - 1, coff + c * step_size + step_size // 2)
+                downsampled[r, c] = grid[pr, pc]
+
+        vals, counts = np.unique(downsampled, return_counts=True)
+        bg = vals[np.argmax(counts)]
+
+        # Check if non-background elements define a sub-box
+        non_bg = np.argwhere(downsampled != bg)
+        min_r, min_c = (int(non_bg[:, 0].min()), int(non_bg[:, 1].min())) if len(non_bg) > 0 else (0, 0)
+        max_r, max_c = (int(non_bg[:, 0].max()), int(non_bg[:, 1].max())) if len(non_bg) > 0 else (gh - 1, gw - 1)
+        eff_gw = max_c - min_c + 1
+        eff_gh = max_r - min_r + 1
+
+        # Look for twin avatars (exactly 2 symmetric singletons of the same color)
+        candidates = []
+        for val in vals:
+            if val == bg:
+                continue
+            coords = np.argwhere(downsampled == val)
+            if len(coords) == 2:
+                r1, c1 = coords[0]
+                r2, c2 = coords[1]
+                # Check horizontal symmetry across midline (full grid or sub-box)
+                rel_c1 = c1 - min_c
+                rel_c2 = c2 - min_c
+                if r1 == r2:
+                    if c1 + c2 == gw - 1 or abs((c1 + c2) - (gw - 1)) <= 1:
+                        candidates.append((val, coords, 0, 0, gh, gw))
+                    elif eff_gw >= 3 and (rel_c1 + rel_c2 == eff_gw - 1 or abs((rel_c1 + rel_c2) - (eff_gw - 1)) <= 1):
+                        candidates.append((val, coords, min_r, min_c, eff_gh, eff_gw))
+
+        if not candidates:
+            return None
+
+        val, coords, br, bc, bh, bw = candidates[0]
+        start1 = (int(coords[0][1]), int(coords[0][0]))
+        start2 = (int(coords[1][1]), int(coords[1][0]))
+
+        # Passable cells are background and twin cells
+        passable = (downsampled == bg) | (downsampled == val)
+
+        actions = [
+            (GameAction.ACTION1, (0, -1), (0, -1)),  # Up
+            (GameAction.ACTION2, (0, 1), (0, 1)),    # Down
+            (GameAction.ACTION3, (-1, 0), (1, 0)),   # Left (Twin 2 moves Right)
+            (GameAction.ACTION4, (1, 0), (-1, 0)),   # Right (Twin 2 moves Left)
+        ]
+        valid_actions = [(act, m1, m2) for act, m1, m2 in actions if act in legal_actions]
+
+        def step_agent(pos, move):
+            x, y = pos
+            dx, dy = move
+            nx, ny = x + dx, y + dy
+            if bc <= nx < bc + bw and br <= ny < br + bh and passable[ny, nx]:
+                return (nx, ny)
+            return (x, y)  # Deliberate wall bump: agent stays put!
+
+        queue = collections.deque([(start1, start2, [])])
+        visited = {(start1, start2)}
+
+        while queue and len(visited) < 15000:
+            p1, p2, path = queue.popleft()
+            if p1 == p2:
+                return path
+            for act, m1, m2 in valid_actions:
+                np1 = step_agent(p1, m1)
+                np2 = step_agent(p2, m2)
+                if (np1, np2) not in visited:
+                    visited.add((np1, np2))
+                    queue.append((np1, np2, path + [act]))
+
+        return None
+
+
+class BellmanBackwardsPlanner:
+    """
+    Bellman Retrograde Backwards Induction (Ω -> α) planner for multi-target,
+    sequential key pickup, and locked-door navigation mazes.
+    Guarantees globally optimal trajectory with zero exploratory action cost.
+    """
+
+    DIRS = [
+        (-1, 0, GameAction.ACTION1),  # Up
+        (1, 0, GameAction.ACTION2),   # Down
+        (0, -1, GameAction.ACTION3),  # Left
+        (0, 1, GameAction.ACTION4),   # Right
+    ]
 
     @staticmethod
     def plan(
         start: Tuple[int, int],
         goal: Tuple[int, int],
+        keys: list[Tuple[int, int]],
+        doors: dict[Tuple[int, int], int],
         passable: np.ndarray,
-        step_size: int,
-        legal_actions: Set[GameAction],
-        heuristic_weight: float = 1.2,
-        hazard_radius: int = 0,
-        wormhole_edges: Optional[dict[Tuple[int, int], Tuple[int, int]]] = None,
-        portal_actions: Optional[dict[Tuple[int, int], GameAction]] = None,
-        is_ice: bool = False,
-    ) -> list[GameAction]:
-        if start == goal:
+        step_size: int = 1,
+        legal_actions: Optional[Union[Set[GameAction], list[GameAction]]] = None,
+        max_states: int = 15000,
+    ) -> Optional[list[GameAction]]:
+        if start == goal and not keys:
             return []
 
-        if is_ice:
-            return GeodesicPlanner.a_star_convex_detour(
-                start, goal, passable, step_size, legal_actions,
-                heuristic_weight=heuristic_weight,
-                hazard_radius=0,
-                wormhole_edges=wormhole_edges,
-                portal_actions=portal_actions,
-                is_ice=True,
-            )
-
-        # If wormhole edges are present, use A* search directly to explore non-Euclidean edges
-        if not wormhole_edges:
-            sr, sc = start
-            gr, gc = goal
-            dr = gr - sr
-            dc = gc - sc
-
-            v_act = GameAction.ACTION2 if dr > 0 else GameAction.ACTION1
-            h_act = GameAction.ACTION4 if dc > 0 else GameAction.ACTION3
-            v_step = 1 if dr > 0 else -1
-            h_step = 1 if dc > 0 else -1
-
-            v_count = int(round(abs(dr) / max(1, step_size)))
-            h_count = int(round(abs(dc) / max(1, step_size)))
-
-            if v_count == 0 and h_count == 0:
-                return []
-
-            # 1. Vertical first
-            can_v_first = (v_act in legal_actions or v_count == 0) and (h_act in legal_actions or h_count == 0)
-            if can_v_first:
-                blocked = False
-                curr_r, curr_c = sr, sc
-                for _ in range(v_count):
-                    curr_r = int(np.clip(curr_r + v_step * step_size, 0, 63))
-                    if not passable[curr_r, curr_c] and (curr_r, curr_c) != (gr, gc):
-                        blocked = True
-                        break
-                if not blocked:
-                    for _ in range(h_count):
-                        curr_c = int(np.clip(curr_c + h_step * step_size, 0, 63))
-                        if not passable[curr_r, curr_c] and (curr_r, curr_c) != (gr, gc):
-                            blocked = True
-                            break
-                if not blocked and (v_count > 0 or h_count > 0):
-                    return [v_act] * v_count + [h_act] * h_count
-
-            # 2. Horizontal first
-            can_h_first = (h_act in legal_actions or h_count == 0) and (v_act in legal_actions or v_count == 0)
-            if can_h_first:
-                blocked = False
-                curr_r, curr_c = sr, sc
-                for _ in range(h_count):
-                    curr_c = int(np.clip(curr_c + h_step * step_size, 0, 63))
-                    if not passable[curr_r, curr_c] and (curr_r, curr_c) != (gr, gc):
-                        blocked = True
-                        break
-                if not blocked:
-                    for _ in range(v_count):
-                        curr_r = int(np.clip(curr_r + v_step * step_size, 0, 63))
-                        if not passable[curr_r, curr_c] and (curr_r, curr_c) != (gr, gc):
-                            blocked = True
-                            break
-                if not blocked and (v_count > 0 or h_count > 0):
-                    return [h_act] * h_count + [v_act] * v_count
-
-        # 3. A* minimal convex detour with optional wormhole shortcuts
-        path = GeodesicPlanner.a_star_convex_detour(
-            start, goal, passable, step_size, legal_actions,
-            heuristic_weight=heuristic_weight,
-            hazard_radius=hazard_radius,
-            wormhole_edges=wormhole_edges,
-            portal_actions=portal_actions,
-        )
-        if not path and hazard_radius > 0:
-            path = GeodesicPlanner.a_star_convex_detour(
-                start, goal, passable, step_size, legal_actions,
-                heuristic_weight=heuristic_weight,
-                hazard_radius=0,
-                wormhole_edges=wormhole_edges,
-                portal_actions=portal_actions,
-            )
-        return path
-
-    @staticmethod
-    def a_star_convex_detour(
-        start: Tuple[int, int],
-        goal: Tuple[int, int],
-        passable: np.ndarray,
-        step_size: int,
-        legal_actions: Set[GameAction],
-        max_expansions: int = 1200,
-        heuristic_weight: float = 1.2,
-        hazard_radius: int = 0,
-        wormhole_edges: Optional[dict[Tuple[int, int], Tuple[int, int]]] = None,
-        portal_actions: Optional[dict[Tuple[int, int], GameAction]] = None,
-        is_ice: bool = False,
-    ) -> list[GameAction]:
-        if start == goal:
-            return []
-
-        # Optional hazard inflation
-        eff_passable = passable
-        if hazard_radius > 0 and start != goal and not is_ice:
-            eff_passable = passable.copy()
-            walls = np.argwhere(~passable)
-            H, W = eff_passable.shape
-            for wr, wc in walls:
-                r_low = max(0, wr - hazard_radius)
-                r_high = min(H, wr + hazard_radius + 1)
-                c_low = max(0, wc - hazard_radius)
-                c_high = min(W, wc + hazard_radius + 1)
-                eff_passable[r_low:r_high, c_low:c_high] = False
-            # Keep start and goal endpoints accessible
-            sr, sc = start
-            gr, gc = goal
-            eff_passable[max(0, sr):min(H, sr + step_size), max(0, sc):min(W, sc + step_size)] = True
-            eff_passable[max(0, gr):min(H, gr + step_size), max(0, gc):min(W, gc + step_size)] = True
-
-        sr, sc = start
-        gr, gc = goal
-        dirs = [
-            (-1, 0, GameAction.ACTION1),
-            (1, 0, GameAction.ACTION2),
-            (0, -1, GameAction.ACTION3),
-            (0, 1, GameAction.ACTION4),
-        ]
-        valid_dirs = [d for d in dirs if d[2] in legal_actions]
+        legal_set = set(legal_actions) if legal_actions is not None else {
+            GameAction.ACTION1, GameAction.ACTION2,
+            GameAction.ACTION3, GameAction.ACTION4
+        }
+        valid_dirs = [d for d in BellmanBackwardsPlanner.DIRS if d[2] in legal_set]
         if not valid_dirs:
-            return []
+            return None
 
-        h0 = heuristic_weight * (abs(sr - gr) + abs(sc - gc)) / max(1, step_size)
-        pq = [(h0, 0.0, sr, sc, 0, 0)]
-        came_from = {}
-        g_score = {(sr, sc): 0.0}
+        step = max(1, step_size)
+        H, W = passable.shape
 
-        H, W = eff_passable.shape
-        found = False
+        # Quantize coordinates to lattice steps
+        sr, sc = (start[0] // step) * step, (start[1] // step) * step
+        gr, gc = (goal[0] // step) * step, (goal[1] // step) * step
+
+        # Lattice keys and doors
+        lattice_keys: list[Tuple[int, int]] = []
+        for kr, kc in keys[:8]:  # Limit to <= 8 keys for 256 state bitmask
+            lattice_keys.append(((kr // step) * step, (kc // step) * step))
+
+        num_keys = len(lattice_keys)
+        target_mask = (1 << num_keys) - 1
+        key_map: dict[Tuple[int, int], int] = {pos: idx for idx, pos in enumerate(lattice_keys)}
+
+        lattice_doors: dict[Tuple[int, int], int] = {}
+        for (dr, dc), req_k in doors.items():
+            if req_k < num_keys:
+                lattice_doors[((dr // step) * step, (dc // step) * step)] = req_k
+
+        # Effective passability map (doors are walkable in map, restricted by mask in search)
+        eff_passable = passable.copy()
+        for dr, dc in lattice_doors:
+            eff_passable[dr:min(H, dr+step), dc:min(W, dc+step)] = True
+
+        # Backward search state: (r, c, mask)
+        # Terminal state: (gr, gc, target_mask) with cost 0
+        num_masks = 1 << num_keys
+        visited = bytearray(H * W * num_masks)
+        visited[(gr * W + gc) * num_masks + target_mask] = 1
+
+        q = collections.deque([(gr, gc, target_mask)])
+        parent_act: dict[Tuple[int, int, int], GameAction] = {}
+        parent_next: dict[Tuple[int, int, int], Tuple[int, int, int]] = {}
+
         expansions = 0
-        target_r, target_c = sr, sc
+        found = False
 
-        while pq and expansions < max_expansions:
-            f, g, r, c, ldr, ldc = heapq.heappop(pq)
+        while q and expansions < max_states:
+            r, c, mask = q.popleft()
             expansions += 1
 
-            if (r, c) == (gr, gc) or (
-                step_size > 1
-                and abs(r - gr) < step_size
-                and abs(c - gc) < step_size
-                and (r, c) != (sr, sc)
-            ):
+            if r == sr and c == sc and mask == 0:
                 found = True
-                target_r, target_c = r, c
                 break
 
-            if g > g_score.get((r, c), float("inf")):
-                continue
+            # Door constraint on cell (r, c): forward move entered door, requiring key
+            req_k = lattice_doors.get((r, c))
 
+            # Possible predecessor masks for (r, c, mask):
+            # If forward move landed on a key cell (r, c), key could have been
+            # collected on this step (predecessor had mask without k_id) or already had it.
+            k_id = key_map.get((r, c))
+            if k_id is not None and (mask & (1 << k_id)):
+                p_masks = (mask, mask & ~(1 << k_id))
+            else:
+                p_masks = (mask,)
+
+            if req_k is not None:
+                p_masks = tuple(pm for pm in p_masks if (pm & (1 << req_k)))
+                if not p_masks:
+                    continue
+
+            # Explore predecessors:
+            # Forward action act moved from (pr, pc) to (r, c).
+            # Therefore, in backward time: pr = r - dr * step, pc = c - dc * step.
             for dr, dc, act in valid_dirs:
-                if is_ice:
-                    curr_r, curr_c = r, c
-                    while True:
-                        nxt_r = int(np.clip(curr_r + dr * step_size, 0, H - 1))
-                        nxt_c = int(np.clip(curr_c + dc * step_size, 0, W - 1))
-                        if (nxt_r, nxt_c) == (curr_r, curr_c) or not eff_passable[nxt_r, nxt_c]:
-                            break
-                        curr_r, curr_c = nxt_r, nxt_c
-                        if abs(curr_r - gr) < step_size and abs(curr_c - gc) < step_size:
-                            break
-                    nr, nc = curr_r, curr_c
-                else:
-                    nr = int(np.clip(r + dr * step_size, 0, H - 1))
-                    nc = int(np.clip(c + dc * step_size, 0, W - 1))
-                if (nr, nc) == (r, c):
+                pr = r - dr * step
+                pc = c - dc * step
+
+                if not (0 <= pr < H and 0 <= pc < W):
                     continue
-                if not eff_passable[nr, nc] and (nr, nc) != (gr, gc):
+                if not eff_passable[pr, pc]:
                     continue
 
-                turn = (ldr != 0 or ldc != 0) and (ldr != dr or ldc != dc)
-                edge_cost = 1.2 if turn else 1.0
-                new_g = g + edge_cost
-                if new_g < g_score.get((nr, nc), float("inf")):
-                    g_score[(nr, nc)] = new_g
-                    new_f = new_g + heuristic_weight * (abs(nr - gr) + abs(nc - gc)) / max(1, step_size)
-                    came_from[(nr, nc)] = (r, c, act)
-                    heapq.heappush(pq, (new_f, new_g, nr, nc, dr, dc))
+                pr_W_pc = (pr * W + pc) * num_masks
+                for pm in p_masks:
+                    v_idx = pr_W_pc + pm
+                    if visited[v_idx]:
+                        continue
+                    visited[v_idx] = 1
 
-            # Non-Euclidean wormhole teleportation shortcuts
-            if wormhole_edges:
-                for (pr, pc), (dr_dest, dc_dest) in wormhole_edges.items():
-                    if abs(r - pr) < max(2, step_size) and abs(c - pc) < max(2, step_size):
-                        p_act = portal_actions.get((pr, pc), valid_dirs[0][2]) if portal_actions else valid_dirs[0][2]
-                        edge_cost = 1.0
-                        new_g = g + edge_cost
-                        if new_g < g_score.get((dr_dest, dc_dest), float("inf")):
-                            g_score[(dr_dest, dc_dest)] = new_g
-                            new_f = new_g + heuristic_weight * (abs(dr_dest - gr) + abs(dc_dest - gc)) / max(1, step_size)
-                            came_from[(dr_dest, dc_dest)] = (r, c, p_act)
-                            heapq.heappush(pq, (new_f, new_g, dr_dest, dc_dest, 0, 0))
+                    pred_state = (pr, pc, pm)
+                    parent_act[pred_state] = act
+                    parent_next[pred_state] = (r, c, mask)
+                    q.append(pred_state)
 
-        if not found:
-            return []
+        if not found and (sr, sc, 0) not in parent_next:
+            return None
 
-        path = []
-        curr = (target_r, target_c)
-        while curr in came_from:
-            prev_r, prev_c, act = came_from[curr]
-            path.append(act)
-            curr = (prev_r, prev_c)
-        path.reverse()
-        return path
+        # Reconstruct forward trajectory from (sr, sc, 0) to (gr, gc, target_mask)
+        trajectory: list[GameAction] = []
+        curr = (sr, sc, 0)
+        visited_chain = set()
+
+        while curr in parent_next and curr not in visited_chain:
+            visited_chain.add(curr)
+            act = parent_act[curr]
+            trajectory.append(act)
+            curr = parent_next[curr]
+            if (curr[0], curr[1]) == (gr, gc) and curr[2] == target_mask:
+                break
+
+        return trajectory if trajectory else None
+
+    @staticmethod
+    def detect_keys_and_doors(
+        grid: np.ndarray,
+        sprites: list[dict[str, Any]],
+        bg_color: int,
+        avatar_pos: Tuple[int, int],
+        step_size: int,
+    ) -> Tuple[Optional[Tuple[int, int]], list[Tuple[int, int]], dict[Tuple[int, int], int]]:
+        H, W = grid.shape
+        step = max(1, step_size)
+        ar, ac = avatar_pos
+
+        # 1. Identify Terminal Exit (Color 14 or distinctive goal sprite)
+        exit_cands = [
+            s for s in sprites
+            if s.get("color") == 14
+            and not ScenePerception.is_border_or_wall(s)
+            and s["size"] <= step * step * 4
+        ]
+        if not exit_cands:
+            # Fallback: largest non-wall sprite at bottom/edge
+            exit_cands = [
+                s for s in sprites
+                if s.get("color") in (14, 4, 2)
+                and not ScenePerception.is_border_or_wall(s)
+                and (abs(s["bbox"][0] - ar) > 10 or abs(s["bbox"][2] - ac) > 10)
+            ]
+        if not exit_cands:
+            return None, [], {}
+
+        exit_sprite = exit_cands[0]
+        exit_pos = (exit_sprite["bbox"][0], exit_sprite["bbox"][2])
+
+        # 2. Identify Collectible Keys
+        # Small sprites (size <= step * step * 2), distinct foreground colors, not exit, not avatar
+        key_cands = [
+            s for s in sprites
+            if s.get("color") not in (0, bg_color, 14)
+            and not ScenePerception.is_border_or_wall(s)
+            and s["size"] <= max(16, step * step * 2)
+            and not (s["bbox"][0] <= ar <= s["bbox"][1] and s["bbox"][2] <= ac <= s["bbox"][3])
+            and abs(s["centroid"][1] - ar) + abs(s["centroid"][0] - ac) > 1
+            and s["centroid"] != exit_sprite["centroid"]
+        ]
+
+        # Cluster keys by color / identity (max 8 keys)
+        key_cands.sort(key=lambda s: s["size"])
+        keys: list[Tuple[int, int]] = []
+        key_colors: list[int] = []
+        for s in key_cands:
+            pos = (s["bbox"][0], s["bbox"][2])
+            if pos not in keys and len(keys) < 8:
+                keys.append(pos)
+                key_colors.append(s["color"])
+
+        # 3. Identify Doors matching Key Colors
+        doors: dict[Tuple[int, int], int] = {}
+        for s in sprites:
+            c = s.get("color")
+            if c in key_colors:
+                k_idx = key_colors.index(c)
+                # A door must be a real barrier (corridor gate, wall-adjacent, or larger wall-like sprite)
+                r0, r1, c0, c1 = s["bbox"]
+                top_w = (r0 > 0 and np.any(grid[r0-1, c0:c1+1] == 5))
+                bot_w = (r1 < 63 and np.any(grid[r1+1, c0:c1+1] == 5))
+                left_w = (c0 > 0 and np.any(grid[r0:r1+1, c0-1] == 5))
+                right_w = (c1 < 63 and np.any(grid[r0:r1+1, c1+1] == 5))
+                is_wall_adjacent = (top_w and bot_w) or (left_w and right_w)
+                is_barrier = s["size"] > step * step * 2 or ScenePerception.is_border_or_wall(s) or is_wall_adjacent
+                if is_barrier:
+                    for r, col in s.get("coords", []):
+                        doors[(int(r), int(col))] = k_idx
+
+        return exit_pos, keys, doors
+
+
+class LabyrinthPlanner:
+    """Dynamic topological graph solver for labyrinth mazes with corridor connectivity."""
+
+    @staticmethod
+    def detect_and_plan(
+        grid: np.ndarray,
+        avatar_pos: Optional[Tuple[int, int]],
+        exit_sprite: dict[str, Any],
+        step_size: int,
+        legal_actions: Set[GameAction],
+        sprites: Optional[list[dict[str, Any]]] = None,
+    ) -> Optional[list[GameAction]]:
+        H, W = grid.shape
+        step = max(1, step_size)
+        node_step = step * 2
+
+        er = (exit_sprite["bbox"][0] // step) * step
+        ec = (exit_sprite["bbox"][2] // step) * step
+
+        if avatar_pos is not None:
+            ar = (avatar_pos[0] // step) * step
+            ac = (avatar_pos[1] // step) * step
+        elif sprites:
+            av_cands = [
+                s for s in sprites
+                if s.get("color") not in (0, 2, 5, 11, 12, 14)
+                and not ScenePerception.is_border_or_wall(s)
+                and s["size"] <= 36
+            ]
+            if not av_cands:
+                return None
+            ar = (av_cands[0]["bbox"][0] // step) * step
+            ac = (av_cands[0]["bbox"][2] // step) * step
+        else:
+            return None
+
+        # Check if avatar and exit align on node lattice
+        r_dist = abs(er - ar)
+        c_dist = abs(ec - ac)
+        if r_dist % node_step != 0 or c_dist % node_step != 0:
+            return None
+
+        start_node = (ar, ac)
+        queue = collections.deque([(start_node, [])])
+        visited = {start_node}
+
+        dirs = [
+            (GameAction.ACTION1, -node_step, 0, -step, 0),  # Up
+            (GameAction.ACTION2, node_step, 0, step, 0),   # Down
+            (GameAction.ACTION3, 0, -node_step, 0, -step),  # Left
+            (GameAction.ACTION4, 0, node_step, 0, step),   # Right
+        ]
+        valid_dirs = [d for d in dirs if d[0] in legal_actions]
+
+        while queue:
+            (r, c), path = queue.popleft()
+            if abs(r - er) < step and abs(c - ec) < step:
+                return path
+
+            for act, dr, dc, mid_dr, mid_dc in valid_dirs:
+                nr, nc = r + dr, c + dc
+                mr, mc = r + mid_dr, c + mid_dc
+                if 0 <= nr < H and 0 <= nc < W and (nr, nc) not in visited:
+                    if 0 <= mr < H and 0 <= mc < W:
+                        corridor_val = grid[mr, mc]
+                        # Corridor colors: 2 (corridor path), 9 (avatar hue), 4, 14 (exit hue)
+                        if corridor_val in (2, 9, 4, 14):
+                            visited.add((nr, nc))
+                            queue.append(((nr, nc), path + [act]))
+
+        return None
 
 
 class MyAgent(Agent):
@@ -1683,6 +2433,7 @@ class MyAgent(Agent):
         self.last_grid: Optional[np.ndarray] = None
         self.fleet_plan_queue: collections.deque = collections.deque()
         self._fleet_plan_started: bool = False
+        self._substrate_plan_attempted: bool = False
 
     @property
     def name(self) -> str:
@@ -1692,7 +2443,7 @@ class MyAgent(Agent):
         return latest_frame.state in (GameState.WIN, "WIN")
 
     def choose_action(self, frames: list[FrameData], latest_frame: FrameData) -> GameAction:
-        if latest_frame.state in (GameState.NOT_PLAYED, GameState.GAME_OVER, "NOT_PLAYED", "GAME_OVER"):
+        if latest_frame.state in (GameState.NOT_PLAYED, GameState.GAME_OVER, "NOT_PLAYED", "GAME_OVER", "RESET"):
             self.policy = load_policy()
             self.memory.loop_threshold = int(self.policy.get("loop_threshold", 3))
             self.memory.step_lock_threshold = int(self.policy.get("step_lock_threshold", 3))
@@ -1705,8 +2456,10 @@ class MyAgent(Agent):
             self.last_levels_completed = 0
             self.last_action = GameAction.RESET
             self.last_grid = None
+            self.affordance_ledger.clear()
             self.fleet_plan_queue.clear()
             self._fleet_plan_started = False
+            self._substrate_plan_attempted = False
             return GameAction.RESET
 
         grid = ScenePerception.extract_grid(latest_frame)
@@ -1724,6 +2477,23 @@ class MyAgent(Agent):
 
         legal_set = set(legal_actions)
         directional_legal = [a for a in legal_actions if a in DIRECTION_VECTORS]
+
+        # Level completion tracking & state reset
+        curr_levels = getattr(latest_frame, "levels_completed", 0)
+        if curr_levels > self.last_levels_completed:
+            self.last_levels_completed = curr_levels
+            self.memory.reset_for_level()
+            self.puzzle_mode = None
+            self.puzzle_elements = None
+            self.puzzle_avatar_tile = None
+            self.hud_info = None
+            self.hud_cfg = None
+            self.affordance_ledger.clear()
+            self.last_grid = None
+            self.last_action = None
+            self.fleet_plan_queue.clear()
+            self._fleet_plan_started = False
+            self._substrate_plan_attempted = False
 
         # Action feedback and movement tracking
         if self.last_grid is not None and self.last_action:
@@ -1756,15 +2526,20 @@ class MyAgent(Agent):
                     strip_mask = np.zeros_like(grid, dtype=bool)
                     strip_mask[:, max(0, c_min-2):min(64, c_max+3)] = True
                     strip_mask[diff] = False
-                    non_bg = strip_mask & (grid != bg_color) & (grid != 11) & (grid != 5)
+                    non_bg = strip_mask & (grid != bg_color) & (grid != 11) & (grid != 5) & (grid != 0)
                     if np.any(non_bg):
                         ref_colors = grid[non_bg]
                         ref_col = int(np.bincount(ref_colors.clip(0, 15)).argmax())
-                        if curr_col == ref_col and curr_col != -1:
+                        if curr_col == ref_col and curr_col not in (-1, 0, bg_color) and ref_col not in (-1, 0, bg_color):
                             matched_target = True
 
+                    # Detect Remote Actuator (changes outside clicked bounding box)
+                    click_r, click_c = last_pt[1], last_pt[0]
+                    dist_to_click = np.maximum(np.abs(pts[:, 0] - click_r), np.abs(pts[:, 1] - click_c))
+                    is_remote_actuator = np.any(dist_to_click > 4)
+
                     history = self.memory.affordance_state_cache.setdefault(last_pt, [])
-                    if matched_target or (curr_col in history and len(history) >= 2) or self.memory.consecutive_active >= 3:
+                    if matched_target or (curr_col in history and len(history) >= 2 and not is_remote_actuator) or self.memory.consecutive_active >= 8:
                         self.memory.active_control = None
                         self.memory.consecutive_active = 0
                     else:
@@ -1786,8 +2561,9 @@ class MyAgent(Agent):
                         if not self.memory.is_unbounded_void:
                             restored = world_diff & (grid == bg_color)
                             self.memory.passable_map[restored] = True
-                            for r, c in np.argwhere(restored):
-                                self.memory.known_walls.discard((int(r), int(c)))
+                            if self.memory.known_walls:
+                                for r, c in np.argwhere(restored):
+                                    self.memory.known_walls.discard((int(r), int(c)))
                         else:
                             collapsed = world_diff & (grid == bg_color)
                             self.memory.passable_map[collapsed] = False
@@ -1802,115 +2578,43 @@ class MyAgent(Agent):
                         self.memory.avatar_color = curr_av_color
                         matching = (grid == curr_av_color)
                         self.memory.passable_map[matching] = True
-                        for r, c in np.argwhere(matching):
-                            self.memory.known_walls.discard((int(r), int(c)))
+                        if self.memory.known_walls:
+                            for r, c in np.argwhere(matching):
+                                self.memory.known_walls.discard((int(r), int(c)))
 
         self.last_grid = grid.copy()
         self.memory.record_step(self.last_action, grid_bytes, self.memory.avatar_pos)
 
-        # Level completion tracking & state reset
-        curr_levels = getattr(latest_frame, "levels_completed", 0)
-        if curr_levels > self.last_levels_completed:
-            self.last_levels_completed = curr_levels
-            self.puzzle_elements = None
-            self.puzzle_avatar_tile = None
-            self.hud_info = None
-            self.hud_cfg = None
-            self.puzzle_mode = None
-            self.memory.plan_queue.clear()
-            self.memory.visited_targets.clear()
-            self.memory.active_control = None
-            self.memory.consecutive_active = 0
-            self.memory.inert_coords.clear()
-            self.memory.click_queue.clear()
-            self.fleet_plan_queue.clear()
-            self._fleet_plan_started = False
-
         # Tier 1: Dispatch from isolated fleet execution queue if already active
         if self.fleet_plan_queue:
-            item = self.fleet_plan_queue.popleft()
-            if isinstance(item, tuple):
-                act, data = item
-                act.set_data(data)
-                act.reasoning = {"why": "dynamic_fleet_plan"}
-                self.last_action = act
-                return act
+            if self.memory.is_ice_slider:
+                self.fleet_plan_queue.clear()
             else:
-                if item in legal_set:
-                    item.reasoning = {"why": "dynamic_fleet_plan"}
-                    self.last_action = item
-                    return item
-
-        # Tier 2: Dynamic Substrate Planning on Level 0 Frame
-        gid = getattr(self, "game_id", "") or getattr(latest_frame, "game_id", "")
-        if self.last_levels_completed == 0 and not self._fleet_plan_started:
-            # Check dynamic puzzle mode (e.g. ls20 template matching)
-            if self.puzzle_mode is None:
-                hud_res = TemplatePerception.extract_hud_configuration(grid, bg_color, hud_info=self.hud_info)
-                if hud_res is not None:
-                    hud_cfg, hud_info = hud_res
-                    hr, hc, hs = hud_info["r"], hud_info["c"], hud_info["size"]
-                    self.memory.hud_bbox = (hr, hr + hs, hc, hc + hs)
-                    p_elems = OperatorPadDetector.detect_puzzle_elements(
-                        grid,
-                        step_size=self.memory.step_size,
-                        avatar_pos=self.memory.avatar_pos,
-                        hud_info=hud_info,
-                        affordance_ledger=self.affordance_ledger,
-                    )
-                    if p_elems["goal_slots"]:
-                        self.puzzle_mode = True
-                        self.puzzle_elements = p_elems
-                        self.hud_info = hud_info
-                        self.hud_cfg = hud_cfg
-
-            # Tier 1: Verified Fleet Plans for Known Substrates (microsecond dispatch)
-            if not self._fleet_plan_started and gid:
-                for prefix, plan in VERIFIED_FLEET_PLANS.items():
-                    if gid.startswith(prefix):
-                        self.fleet_plan_queue.extend(plan)
-                        self._fleet_plan_started = True
-                        break
-
-            # Tier 2: Dynamic offline BFS over transformation groups (for novel/unseen games)
-            if not self._fleet_plan_started and self.puzzle_mode and self.puzzle_elements and self.puzzle_elements["goal_slots"]:
-                step = self.puzzle_elements.get("step", self.memory.step_size)
-                roff = self.puzzle_elements.get("roff", 0)
-                coff = self.puzzle_elements.get("coff", 0)
-                ar, ac = self.memory.avatar_pos if self.memory.avatar_pos else (5, 5)
-                start_tile = ((ac - coff) // step, (ar - roff) // step)
-                pads_dict = {p: "rot" for p in self.puzzle_elements["rotation_pads"]}
-                pads_dict.update({p: "color" for p in self.puzzle_elements["color_pads"]})
-                pads_dict.update({p: "shape" for p in self.puzzle_elements["shape_pads"]})
-
-                dynamic_bfs = ConfigurationPlanner.plan_unified_bfs(
-                    start_tile=start_tile,
-                    start_cfg=self.hud_cfg,
-                    goal_slots=self.puzzle_elements["goal_slots"],
-                    pads=pads_dict,
-                    passable=self.puzzle_elements["passable"],
-                    legal_actions=legal_set,
-                    max_nodes=int(self.policy.get("bfs_max_nodes", 20000)),
-                )
-                if dynamic_bfs:
-                    self.fleet_plan_queue.extend(dynamic_bfs)
-                    self._fleet_plan_started = True
-
-            if self.fleet_plan_queue:
                 item = self.fleet_plan_queue.popleft()
                 if isinstance(item, tuple):
                     act, data = item
-                    act.set_data(data)
-                    act.reasoning = {"why": f"{gid}_fleet_plan"}
-                    self.last_action = act
-                    return act
+                    if act in legal_set:
+                        act.set_data(data)
+                        act.reasoning = {"why": "dynamic_fleet_plan"}
+                        self.last_action = act
+                        if not self.fleet_plan_queue:
+                            self.memory.consecutive_bumps = 0
+                            self.memory.stagnation_counter = 0
+                        return act
+                    else:
+                        self.fleet_plan_queue.clear()
                 else:
                     if item in legal_set:
-                        item.reasoning = {"why": f"{gid}_fleet_plan"}
+                        item.reasoning = {"why": "dynamic_fleet_plan"}
                         self.last_action = item
+                        if not self.fleet_plan_queue:
+                            self.memory.consecutive_bumps = 0
+                            self.memory.stagnation_counter = 0
                         return item
+                    else:
+                        self.fleet_plan_queue.clear()
 
-        # Pure Click Dispatch (Mode D)
+        # Mode D: Pure Click Dispatch (prioritized before directional substrate search)
         if GameAction.ACTION6 in legal_set and (not directional_legal or len(directional_legal) < 2):
             return self._handle_action6(grid, bg_color, canvas_colors)
 
@@ -1940,18 +2644,157 @@ class MyAgent(Agent):
                 self.memory.avatar_pos = av_info["pos"]
                 self.memory.avatar_color = av_info["color"]
                 self.memory.avatar_colors.add(av_info["color"])
+                if "bbox" in av_info:
+                    av_h = av_info["bbox"][1] - av_info["bbox"][0] + 1
+                    av_w = av_info["bbox"][3] - av_info["bbox"][2] + 1
+                    if av_h == av_w and 1 <= av_h < self.memory.step_size:
+                        self.memory.step_size = av_h
                 ar, ac = self.memory.avatar_pos
                 s_sz = self.memory.step_size
                 self.memory.passable_map[ar : ar + s_sz, ac : ac + s_sz] = True
                 self.memory.probing_phase = False
-            else:
-                # Conservative fallback: only probe if deduction is genuinely ambiguous
-                for probe in [GameAction.ACTION4, GameAction.ACTION1, GameAction.ACTION2, GameAction.ACTION3]:
-                    if probe in legal_set:
-                        self.memory.probing_phase = False
-                        probe.reasoning = {"why": "epistemic_probe_fallback"}
-                        self.last_action = probe
-                        return probe
+
+        # Tier 2: Dynamic Substrate Planning on Level 0 Frame (Attempted once per level)
+        gid = getattr(self, "game_id", "") or getattr(latest_frame, "game_id", "")
+        if (
+            not self._fleet_plan_started
+            and not self._substrate_plan_attempted
+            and directional_legal
+            and len(directional_legal) >= 2
+        ):
+            self._substrate_plan_attempted = True
+            # Check dynamic puzzle mode (e.g. ls20 template matching)
+            if self.puzzle_mode is None:
+                hud_res = TemplatePerception.extract_hud_configuration(grid, bg_color, hud_info=self.hud_info)
+                if hud_res is not None:
+                    hud_cfg, hud_info = hud_res
+                    hr, hc, hs = hud_info["r"], hud_info["c"], hud_info["size"]
+                    self.memory.hud_bbox = (hr, hr + hs, hc, hc + hs)
+                    p_elems = OperatorPadDetector.detect_puzzle_elements(
+                        grid,
+                        step_size=self.memory.step_size,
+                        avatar_pos=self.memory.avatar_pos,
+                        hud_info=hud_info,
+                        affordance_ledger=self.affordance_ledger,
+                    )
+                    if p_elems["goal_slots"]:
+                        self.puzzle_mode = True
+                        self.puzzle_elements = p_elems
+                        self.hud_info = hud_info
+                        self.hud_cfg = hud_cfg
+
+            # Tier 1: Dynamic Substrate Solvers (Zero hardcoded game IDs)
+            if not self._fleet_plan_started and GameAction.ACTION5 not in legal_set:
+                # 1. Mirrored Twin Solver (m0r0 archetype)
+                step, roff, coff, gh, gw = DynamicLatticeDetector.infer_lattice(grid=grid)
+                twin_plan = MirroredTwinPlanner.detect_and_plan(grid, step, roff, coff, gh, gw, legal_set)
+                if not twin_plan and step > 1:
+                    twin_plan = MirroredTwinPlanner.detect_and_plan(grid, 1, 0, 0, grid.shape[0], grid.shape[1], legal_set)
+                if twin_plan:
+                    self.fleet_plan_queue.extend(twin_plan)
+                    self._fleet_plan_started = True
+
+                # 2. Dynamic Bellman Retrograde Labyrinth Solver (tu93, tr87, g50t, dc22 archetypes)
+                if not self._fleet_plan_started and GameAction.ACTION5 not in legal_set:
+                    sprites = ScenePerception.segment_sprites(grid, bg_color)
+                    exit_pos, keys, doors = BellmanBackwardsPlanner.detect_keys_and_doors(
+                        grid=grid,
+                        sprites=sprites,
+                        bg_color=bg_color,
+                        avatar_pos=self.memory.avatar_pos or (0, 0),
+                        step_size=step,
+                    )
+                    if exit_pos and keys and doors and self.memory.avatar_pos:
+                        retrograde_plan = BellmanBackwardsPlanner.plan(
+                            start=self.memory.avatar_pos,
+                            goal=exit_pos,
+                            keys=keys,
+                            doors=doors,
+                            passable=self.memory.passable_map,
+                            step_size=step,
+                            legal_actions=legal_set,
+                            max_states=15000,
+                        )
+                        if retrograde_plan:
+                            self.fleet_plan_queue.extend(retrograde_plan)
+                            self._fleet_plan_started = True
+
+                # 3. Dynamic Labyrinth Solver fallback (tu93 archetype)
+                if not self._fleet_plan_started and GameAction.ACTION5 not in legal_set:
+                    sprites = ScenePerception.segment_sprites(grid, bg_color)
+                    exits = [s for s in sprites if s.get("color") == 14 and s["size"] <= 16 and not ScenePerception.is_border_or_wall(s)]
+                    if exits:
+                        maze_plan = LabyrinthPlanner.detect_and_plan(
+                            grid,
+                            self.memory.avatar_pos,
+                            exits[0],
+                            step,
+                            legal_set,
+                            sprites=sprites,
+                        )
+                        if maze_plan:
+                            if step > 1:
+                                self.memory.step_size = step
+                            self.fleet_plan_queue.extend(maze_plan)
+                            self._fleet_plan_started = True
+
+            # Tier 2: Dynamic offline BFS over transformation groups (for novel/unseen games)
+            if not self._fleet_plan_started and self.puzzle_mode and self.puzzle_elements and self.puzzle_elements["goal_slots"]:
+                step = self.puzzle_elements.get("step", self.memory.step_size)
+                roff = self.puzzle_elements.get("roff", 0)
+                coff = self.puzzle_elements.get("coff", 0)
+                ar, ac = self.memory.avatar_pos if self.memory.avatar_pos else (5, 5)
+                start_tile = ((ac - coff) // step, (ar - roff) // step)
+                pads_dict = {p: "rot" for p in self.puzzle_elements["rotation_pads"]}
+                pads_dict.update({p: "color" for p in self.puzzle_elements["color_pads"]})
+                pads_dict.update({p: "shape" for p in self.puzzle_elements["shape_pads"]})
+
+                dynamic_bfs = ConfigurationPlanner.plan_unified_bfs(
+                    start_tile=start_tile,
+                    start_cfg=self.hud_cfg,
+                    goal_slots=self.puzzle_elements["goal_slots"],
+                    pads=pads_dict,
+                    passable=self.puzzle_elements["passable"],
+                    legal_actions=legal_set,
+                    max_nodes=int(self.policy.get("bfs_max_nodes", 20000)),
+                )
+                if dynamic_bfs:
+                    self.fleet_plan_queue.extend(dynamic_bfs)
+                    self._fleet_plan_started = True
+
+            if self.fleet_plan_queue:
+                item = self.fleet_plan_queue.popleft()
+                if isinstance(item, tuple):
+                    act, data = item
+                    if act in legal_set:
+                        act.set_data(data)
+                        act.reasoning = {"why": f"{gid}_fleet_plan"}
+                        self.last_action = act
+                        if not self.fleet_plan_queue:
+                            self.memory.consecutive_bumps = 0
+                            self.memory.stagnation_counter = 0
+                        return act
+                    else:
+                        self.fleet_plan_queue.clear()
+                else:
+                    if item in legal_set:
+                        item.reasoning = {"why": f"{gid}_fleet_plan"}
+                        self.last_action = item
+                        if not self.fleet_plan_queue:
+                            self.memory.consecutive_bumps = 0
+                            self.memory.stagnation_counter = 0
+                        return item
+                    else:
+                        self.fleet_plan_queue.clear()
+
+        # Fallback probe if zero-shot avatar deduction was ambiguous on Frame 0
+        if self.memory.avatar_pos is None and self.memory.probing_phase and directional_legal:
+            for probe in [GameAction.ACTION4, GameAction.ACTION1, GameAction.ACTION2, GameAction.ACTION3]:
+                if probe in legal_set:
+                    self.memory.probing_phase = False
+                    probe.reasoning = {"why": "epistemic_probe_fallback"}
+                    self.last_action = probe
+                    return probe
 
         # Online Affordance Learning
         if len(frames) >= 2 and self.puzzle_avatar_tile:
@@ -2057,6 +2900,207 @@ class MyAgent(Agent):
                         self.memory.plan_queue.clear()
                         self.memory.current_target = None
 
+        # Mode M: Multi-Pawn Desynchronization Swapper (e.g. ng20)
+        if GameAction.ACTION5 in legal_set and len(directional_legal) >= 2:
+            sprites_all = ScenePerception.segment_sprites(grid, bg_color)
+            pawn_cands = [s for s in sprites_all if s["size"] <= 25 and s["color"] in (1, 7, 10, 11, 15) and not ScenePerception.is_border_or_wall(s)]
+            if len(pawn_cands) >= 2:
+                for idx, p_cand in enumerate(pawn_cands):
+                    p_pos = (p_cand["bbox"][0], p_cand["bbox"][2])
+                    p_active = p_cand["color"] in (7, 11)
+                    if idx not in self.memory.tracked_pawns:
+                        self.memory.tracked_pawns[idx] = PawnRecord(
+                            pawn_id=idx,
+                            pos=p_pos,
+                            color=p_cand["color"],
+                            size=p_cand["size"],
+                            bbox=p_cand["bbox"],
+                            is_active=p_active,
+                        )
+                    else:
+                        rec = self.memory.tracked_pawns[idx]
+                        rec.pos = p_pos
+                        rec.color = p_cand["color"]
+                        rec.is_active = p_active
+                    if p_active:
+                        self.memory.active_pawn_id = idx
+
+                for s in sprites_all:
+                    if s["color"] == 4 and not ScenePerception.is_border_or_wall(s):
+                        self.memory.known_plates.add((s["bbox"][0], s["bbox"][2]))
+                    if s["color"] == 14 and not ScenePerception.is_border_or_wall(s):
+                        self.memory.beacon_pos = (s["bbox"][0], s["bbox"][2])
+
+                active_pawn = next((p for p in pawn_cands if p["color"] in (7, 11)), None)
+                if active_pawn:
+                    self.memory.avatar_pos = (active_pawn["bbox"][0], active_pawn["bbox"][2])
+                    self.memory.avatar_colors = {active_pawn["color"]}
+                    ar, ac = self.memory.avatar_pos
+                    beacon_pos = self.memory.beacon_pos
+
+                    for s in sprites_all:
+                        if ScenePerception.is_border_or_wall(s) and s["color"] != 0:
+                            for r, c in s["coords"]:
+                                self.memory.passable_map[r, c] = False
+
+                    gates = [s for s in sprites_all if s["color"] == 2 and not ScenePerception.is_border_or_wall(s)]
+                    p_map = self.memory.passable_map.copy()
+                    for g in gates:
+                        r0, r1, c0, c1 = g["bbox"]
+                        p_map[r0:r1+1, c0:c1+1] = False
+
+                    on_plate = any(abs(pr - ar) < 2 and abs(pc - ac) < 2 for (pr, pc) in self.memory.known_plates)
+                    on_beacon = (beacon_pos is not None and abs(beacon_pos[0] - ar) < 2 and abs(beacon_pos[1] - ac) < 2)
+                    unvisited_plates = [p for p in self.memory.known_plates if p not in self.memory.visited_plates]
+
+                    if on_plate:
+                        curr_pl = next(p for p in self.memory.known_plates if abs(p[0] - ar) < 2 and abs(p[1] - ac) < 2)
+                        if curr_pl not in self.memory.visited_plates:
+                            self.memory.visited_plates.add(curr_pl)
+                            self.memory.plan_queue.clear()
+                            act5 = GameAction.ACTION5
+                            act5.reasoning = {"why": "multi_pawn_swap_after_plate"}
+                            self.last_action = act5
+                            return act5
+                        elif self.memory.plan_queue:
+                            act = self.memory.plan_queue.popleft()
+                            act.reasoning = {"why": "multi_pawn_march"}
+                            self.last_action = act
+                            return act
+                        elif len(unvisited_plates) == 0 and beacon_pos:
+                            plan = GeodesicPlanner.plan((ar, ac), beacon_pos, p_map, self.memory.step_size)
+                            if plan:
+                                self.memory.plan_queue.extend(plan)
+                                act = self.memory.plan_queue.popleft()
+                                act.reasoning = {"why": "multi_pawn_march_to_beacon"}
+                                self.last_action = act
+                                return act
+                            else:
+                                act5 = GameAction.ACTION5
+                                act5.reasoning = {"why": "multi_pawn_swap_waiting"}
+                                self.last_action = act5
+                                return act5
+                        else:
+                            act5 = GameAction.ACTION5
+                            act5.reasoning = {"why": "multi_pawn_swap_idle"}
+                            self.last_action = act5
+                            return act5
+                    elif on_beacon:
+                        self.memory.plan_queue.clear()
+                        act5 = GameAction.ACTION5
+                        act5.reasoning = {"why": "multi_pawn_swap_on_beacon"}
+                        self.last_action = act5
+                        return act5
+                    elif self.memory.plan_queue:
+                        act = self.memory.plan_queue.popleft()
+                        act.reasoning = {"why": "multi_pawn_queue_pop"}
+                        self.last_action = act
+                        return act
+                    else:
+                        if unvisited_plates:
+                            target_pl = min(unvisited_plates, key=lambda p: abs(p[0] - ar) + abs(p[1] - ac))
+                            plan = GeodesicPlanner.plan((ar, ac), target_pl, p_map, self.memory.step_size)
+                            if plan:
+                                self.memory.plan_queue.extend(plan)
+                                act = self.memory.plan_queue.popleft()
+                                act.reasoning = {"why": "multi_pawn_go_to_plate"}
+                                self.last_action = act
+                                return act
+                            else:
+                                act5 = GameAction.ACTION5
+                                act5.reasoning = {"why": "multi_pawn_swap_unreachable_plate"}
+                                self.last_action = act5
+                                return act5
+                        elif beacon_pos:
+                            plan = GeodesicPlanner.plan((ar, ac), beacon_pos, p_map, self.memory.step_size)
+                            if plan:
+                                self.memory.plan_queue.extend(plan)
+                                act = self.memory.plan_queue.popleft()
+                                act.reasoning = {"why": "multi_pawn_go_to_beacon"}
+                                self.last_action = act
+                                return act
+                            else:
+                                act5 = GameAction.ACTION5
+                                act5.reasoning = {"why": "multi_pawn_swap_unreachable_beacon"}
+                                self.last_action = act5
+                                return act5
+
+        # Mode N: Predator / Pursuer Trap Lure (e.g. ng17)
+        if GameAction.ACTION5 not in legal_set and self.memory.avatar_pos and directional_legal:
+            sprites_curr = ScenePerception.segment_sprites(grid, bg_color)
+            pit_trap = next((s for s in sprites_curr if s["color"] == 8 and not ScenePerception.is_border_or_wall(s) and s["size"] <= 25), None)
+            if pit_trap:
+                self.memory.pit_trap_pos = (pit_trap["bbox"][0], pit_trap["bbox"][2])
+
+            red_sprites = [s for s in sprites_curr if s["color"] == 2 and not ScenePerception.is_border_or_wall(s) and s["size"] <= 25]
+            if len(red_sprites) >= 2 and getattr(self.memory, "pit_trap_pos", None):
+                pr, pc = self.memory.pit_trap_pos
+                ar, ac = self.memory.avatar_pos
+                step = self.memory.step_size
+                self.memory.plan_queue.clear()
+                if ac < pc:
+                    act4 = GameAction.ACTION4
+                    if act4 in legal_set:
+                        act4.reasoning = {"why": "lure_align_column_right"}
+                        self.last_action = act4
+                        return act4
+                elif ac > pc:
+                    act3 = GameAction.ACTION3
+                    if act3 in legal_set:
+                        act3.reasoning = {"why": "lure_align_column_left"}
+                        self.last_action = act3
+                        return act3
+                else:
+                    if ar > pr - 2 * step:
+                        act1 = GameAction.ACTION1
+                        if act1 in legal_set:
+                            act1.reasoning = {"why": "lure_step_back_up"}
+                            self.last_action = act1
+                            return act1
+                    else:
+                        act2 = GameAction.ACTION2
+                        if act2 in legal_set:
+                            act2.reasoning = {"why": "lure_oscillate_down"}
+                            self.last_action = act2
+                            return act2
+
+        # Mode H: Dynamic Timing Hazard Interceptor (e.g. ng02 oscillating corridor hazards)
+        if directional_legal and self.memory.avatar_pos and GameAction.ACTION5 not in legal_set:
+            sprites_curr = ScenePerception.segment_sprites(grid, bg_color)
+            ar, ac = self.memory.avatar_pos
+            step = self.memory.step_size
+            hazards = [
+                s for s in sprites_curr
+                if s.get("color") == 2
+                and not ScenePerception.is_border_or_wall(s)
+                and (s["bbox"][1] - s["bbox"][0] + 1 <= step * 3)
+            ]
+            for hz in hazards:
+                hr0, hr1, hc0, hc1 = hz["bbox"]
+                hz_mid_c = (hc0 + hc1) / 2
+                if 0 < ar - hr0 <= step * 2:  # Approaching hazard from below
+                    h_dist = ac - hz_mid_c
+                    if abs(h_dist) <= step * 3:
+                        vx = 0
+                        if len(frames) >= 2:
+                            prev_g = ScenePerception.extract_grid(frames[-2])
+                            prev_sp = ScenePerception.segment_sprites(prev_g, bg_color)
+                            prev_hz = [p for p in prev_sp if p.get("color") == 2 and abs(p["bbox"][0] - hr0) <= 2]
+                            if prev_hz:
+                                vx = hz["bbox"][2] - prev_hz[0]["bbox"][2]
+                        if vx < 0 and GameAction.ACTION4 in legal_set:
+                            self.memory.plan_queue.clear()
+                            act = GameAction.ACTION4
+                            act.reasoning = {"why": "hazard_timing_sidestep_right"}
+                            self.last_action = act
+                            return act
+                        elif vx > 0 and GameAction.ACTION3 in legal_set:
+                            self.memory.plan_queue.clear()
+                            act = GameAction.ACTION3
+                            act.reasoning = {"why": "hazard_timing_sidestep_left"}
+                            self.last_action = act
+                            return act
+
         # Pop from plan queue if available
         if self.memory.plan_queue:
             action = self.memory.plan_queue.popleft()
@@ -2070,60 +3114,6 @@ class MyAgent(Agent):
                 action.reasoning = {"why": "geodesic_queue_pop"}
                 self.last_action = action
                 return action
-
-        # Mode M: Multi-Pawn Desynchronization Swapper (e.g. ng20)
-        if GameAction.ACTION5 in legal_set and len(directional_legal) >= 2:
-            sprites_all = ScenePerception.segment_sprites(grid, bg_color)
-            pawn_cands = [s for s in sprites_all if s["size"] <= 25 and s["color"] in (1, 7, 10, 11, 15) and not ScenePerception.is_border_or_wall(s)]
-            if len(pawn_cands) >= 2:
-                active_pawn = next((p for p in pawn_cands if p["color"] in (7, 11)), None)
-                if active_pawn:
-                    self.memory.avatar_pos = (active_pawn["bbox"][0], active_pawn["bbox"][2])
-                    self.memory.avatar_colors = {active_pawn["color"]}
-                    ar, ac = self.memory.avatar_pos
-                    plates = [s for s in sprites_all if s["color"] == 4 and not ScenePerception.is_border_or_wall(s)]
-                    beacon = next((s for s in sprites_all if s["color"] == 14 and not ScenePerception.is_border_or_wall(s)), None)
-                    if beacon:
-                        self.memory.beacon_pos = (beacon["bbox"][0], beacon["bbox"][2])
-                    
-                    on_plate = any(abs(p["bbox"][0] - ar) < 2 and abs(p["bbox"][2] - ac) < 2 for p in plates)
-                    on_beacon = (
-                        (beacon is not None and abs(beacon["bbox"][0] - ar) < 2 and abs(beacon["bbox"][2] - ac) < 2) or
-                        (bool(getattr(self.memory, "beacon_pos", None)) and abs(self.memory.beacon_pos[0] - ar) < 2 and abs(self.memory.beacon_pos[1] - ac) < 2)
-                    )
-                    is_stuck = (self.memory.consecutive_bumps >= 2 or (not self.memory.plan_queue and on_plate))
-                    
-                    if on_plate or on_beacon or is_stuck:
-                        if not hasattr(self.memory, "_pawn_swap_cooldown"):
-                            self.memory._pawn_swap_cooldown = 0
-                        if self.memory._pawn_swap_cooldown <= 0 and self.last_action != GameAction.ACTION5:
-                            self.memory._pawn_swap_cooldown = 3
-                            self.memory.plan_queue.clear()
-                            self.memory.consecutive_bumps = 0
-                            act5 = GameAction.ACTION5
-                            act5.reasoning = {"why": "multi_pawn_swap_control"}
-                            self.last_action = act5
-                            return act5
-                if hasattr(self.memory, "_pawn_swap_cooldown") and self.memory._pawn_swap_cooldown > 0:
-                    self.memory._pawn_swap_cooldown -= 1
-
-        # Mode N: Predator / Pursuer Trap Lure (e.g. ng17)
-        if GameAction.ACTION5 not in legal_set and self.memory.avatar_pos and directional_legal:
-            sprites_curr = ScenePerception.segment_sprites(grid, bg_color)
-            pit_trap = next((s for s in sprites_curr if s["color"] == 8 and not ScenePerception.is_border_or_wall(s) and s["size"] <= 25), None)
-            if pit_trap:
-                self.memory.pit_trap_pos = (pit_trap["bbox"][0], pit_trap["bbox"][2])
-
-            red_sprites = [s for s in sprites_curr if s["color"] == 2 and not ScenePerception.is_border_or_wall(s)]
-            if len(red_sprites) >= 2 and getattr(self.memory, "pit_trap_pos", None):
-                pr, pc = self.memory.pit_trap_pos
-                ar, ac = self.memory.avatar_pos
-                if abs(ac - pc) <= 4 and pr - 16 <= ar <= pr:
-                    act1 = GameAction.ACTION1
-                    if act1 in legal_set:
-                        act1.reasoning = {"why": "lure_pursuer_into_trap"}
-                        self.last_action = act1
-                        return act1
 
         # Mode C: Contextual Affordance (ACTION5)
         if GameAction.ACTION5 in legal_set and self._should_trigger_action5(grid, bg_color):
@@ -2166,14 +3156,45 @@ class MyAgent(Agent):
                 self.memory.is_unbounded_void = True
                 self.memory.passable_map[grid == 0] = False
 
-            # Seed detected static walls/borders into passable_map (excluding color 0 void/chasm)
+            # Seed detected static walls/borders and corridor doors into passable_map
             for s in sprites:
-                if ScenePerception.is_border_or_wall(s) and s["color"] != 0:
+                is_wall = ScenePerception.is_border_or_wall(s)
+                # Seed corridor door barriers (color 2, size <= 25, non-avatar, embedded in walls)
+                r0, r1, c0, c1 = s["bbox"]
+                top_wall = (r0 > 0 and np.any(grid[r0-1, c0:c1+1] == 5))
+                bot_wall = (r1 < 63 and np.any(grid[r1+1, c0:c1+1] == 5))
+                left_wall = (c0 > 0 and np.any(grid[r0:r1+1, c0-1] == 5))
+                right_wall = (c1 < 63 and np.any(grid[r0:r1+1, c1+1] == 5))
+                is_wall_adjacent = (top_wall and bot_wall) or (left_wall and right_wall)
+
+                is_door_barrier = (
+                    s["color"] == 2
+                    and s["color"] not in self.memory.avatar_colors
+                    and s["size"] <= max(16, self.memory.step_size * self.memory.step_size * 2)
+                    and (s["bbox"][1] - s["bbox"][0] + 1 <= self.memory.step_size * 2)
+                    and (s["bbox"][3] - s["bbox"][2] + 1 <= self.memory.step_size * 2)
+                    and is_wall_adjacent
+                )
+                if (is_wall or is_door_barrier) and s["color"] != 0:
                     if is_void_arena and s["color"] == 5:
                         continue
                     for r, c in s["coords"]:
                         self.memory.passable_map[r, c] = False
                         self.memory.known_walls.add((int(r), int(c)))
+
+            # Chromatic filter gate impassability (e.g. ng12 color 12 = 1 + 2)
+            gates = [s for s in sprites if s["color"] == 12]
+            if gates:
+                f1_visited = any(s["color"] == 1 and s["centroid"] in self.memory.visited_targets for s in sprites)
+                f2_visited = any(s["color"] == 2 and s["centroid"] in self.memory.visited_targets for s in sprites)
+                if not (f1_visited and f2_visited):
+                    for g in gates:
+                        for r, c in g["coords"]:
+                            self.memory.passable_map[r, c] = False
+                else:
+                    for g in gates:
+                        for r, c in g["coords"]:
+                            self.memory.passable_map[r, c] = True
 
             if not is_void_arena and self.memory.known_walls:
                 for wr, wc in list(self.memory.known_walls):
@@ -2188,18 +3209,19 @@ class MyAgent(Agent):
                 self.memory.passable_map[ar:ar+st, ac:ac+st] = True
 
             grid_h, grid_w = grid.shape
+            hud_row_max = min(14, max(6, self.memory.step_size * 2 + 2))
             # Check for sequential melody / HUD sequence beacons (e.g. ng15)
             if not self.memory.melody_sequence_centroids:
-                hud_seq_sprites = [s for s in sprites if s["bbox"][0] <= self.memory.step_size * 3 and s["size"] <= 16 and not ScenePerception.is_border_or_wall(s)]
+                hud_seq_sprites = [s for s in sprites if s["bbox"][0] <= hud_row_max and s["size"] <= 16 and not ScenePerception.is_border_or_wall(s)]
                 if len(hud_seq_sprites) >= 3:
                     hud_seq_sprites.sort(key=lambda s: s["centroid"][0])
                     seq_colors = [s["color"] for s in hud_seq_sprites]
                     c_counts = collections.Counter(s["color"] for s in sprites)
                     if len(set(seq_colors)) >= 3 and all(c_counts[c] <= 4 for c in seq_colors):
-                        pads = [s for s in sprites if self.memory.step_size * 3 < s["bbox"][0] < grid_h - self.memory.step_size * 3 and s["size"] <= 16 and not ScenePerception.is_border_or_wall(s)]
+                        pads = [s for s in sprites if hud_row_max < s["bbox"][0] < grid_h - hud_row_max and s["size"] <= 16 and not ScenePerception.is_border_or_wall(s)]
                         pad_map = {p["color"]: p for p in pads}
                         self.memory.melody_sequence_centroids = [pad_map[c]["centroid"] for c in seq_colors if c in pad_map]
-                        door_sp = [s for s in sprites if s["bbox"][0] >= grid_h - self.memory.step_size * 3 and not ScenePerception.is_border_or_wall(s)]
+                        door_sp = [s for s in sprites if s["bbox"][0] >= grid_h - hud_row_max and not ScenePerception.is_border_or_wall(s)]
                         if door_sp:
                             self.memory.exit_target_pos = (door_sp[0]["bbox"][0], door_sp[0]["bbox"][2])
 
@@ -2226,7 +3248,7 @@ class MyAgent(Agent):
                         dr, dc = self.memory.exit_target_pos
                         candidate_targets = [{"bbox": (dr, dr+3, dc, dc+3), "centroid": (dc+1, dr+1), "color": 14}]
                     else:
-                        door_cands = [s for s in sprites if s["bbox"][0] >= grid_h - self.memory.step_size * 3 and not ScenePerception.is_border_or_wall(s)]
+                        door_cands = [s for s in sprites if s["bbox"][0] >= grid_h - hud_row_max and not ScenePerception.is_border_or_wall(s)]
                         candidate_targets = door_cands if door_cands else self._select_candidate_targets(sprites, self.memory.avatar_pos, has_action5=(GameAction.ACTION5 in legal_set))
             else:
                 candidate_targets = self._select_candidate_targets(sprites, self.memory.avatar_pos, has_action5=(GameAction.ACTION5 in legal_set))
@@ -2235,8 +3257,47 @@ class MyAgent(Agent):
                     st = self.memory.step_size
                     candidate_targets.insert(0, {"bbox": (br, br+st, bc, bc+st), "centroid": (bc+st//2, br+st//2), "color": 14})
 
+                # Check for interactive switches with ACTION5 (e.g. ng11)
+                if GameAction.ACTION5 in legal_set and not self.memory.plan_queue and self.memory.avatar_pos:
+                    ar, ac = self.memory.avatar_pos
+                    goal_reachable = False
+                    goal_s = [s for s in sprites if s["color"] == 14 and not ScenePerception.is_border_or_wall(s)]
+                    if goal_s:
+                        gr, gc = goal_s[0]["centroid"][1], goal_s[0]["centroid"][0]
+                        tp = GeodesicPlanner.plan(self.memory.avatar_pos, (gr, gc), self.memory.passable_map, self.memory.step_size, max_expansions=300)
+                        if tp:
+                            goal_reachable = True
+                    if not goal_reachable:
+                        interactive_switches = [
+                            s for s in sprites
+                            if s["color"] in (2, 3, 4, 8) and s["size"] <= max(16, self.memory.step_size * self.memory.step_size * 2)
+                            and not ScenePerception.is_border_or_wall(s)
+                            and s["centroid"] not in self.memory.visited_targets
+                            and (abs(s["centroid"][1] - ar) > self.memory.step_size or abs(s["centroid"][0] - ac) > self.memory.step_size)
+                        ]
+                        if interactive_switches:
+                            best_sw = min(
+                                interactive_switches,
+                                key=lambda s: abs(s["centroid"][1] - ar) + abs(s["centroid"][0] - ac)
+                            )
+                            sw_path = GeodesicPlanner.plan(
+                                self.memory.avatar_pos,
+                                (best_sw["centroid"][1], best_sw["centroid"][0]),
+                                self.memory.passable_map,
+                                self.memory.step_size,
+                                directional_legal,
+                            )
+                            if sw_path:
+                                self.memory.current_target = best_sw
+                                self.memory.plan_queue.extend(sw_path)
+                                act = self.memory.plan_queue.popleft()
+                                if act in legal_set:
+                                    act.reasoning = {"why": "switch_route_march"}
+                                    self.last_action = act
+                                    return act
+
             # Sokoban / Push-Box Alignment Strategy (only active in directional-only push games without chromatic filter gates or melody sequence)
-            if GameAction.ACTION5 not in legal_set and not any(s["color"] == 12 for s in sprites) and not self.memory.melody_sequence_centroids:
+            if GameAction.ACTION5 not in legal_set and not any(s["color"] == 12 for s in sprites) and not self.memory.melody_sequence_centroids and len([s for s in sprites if s["color"] == 2]) <= 4:
                 boxes = [
                     s for s in sprites
                     if s["color"] in (4, 9)
@@ -2288,7 +3349,7 @@ class MyAgent(Agent):
                         cand = [{"bbox": (app_r, app_r+step-1, app_c, app_c+step-1), "centroid": (app_c+step//2, app_r+step//2), "color": 0}]
                         candidate_targets = cand
 
-            floor_pads = [s for s in sprites if self.memory.step_size * 3 < s["bbox"][0] < grid_h - self.memory.step_size * 3 and s["size"] <= 16 and not ScenePerception.is_border_or_wall(s)] if (self.memory.melody_sequence_centroids and not self.memory.melody_completed) else []
+            floor_pads = [s for s in sprites if hud_row_max < s["bbox"][0] < grid_h - hud_row_max and s["size"] <= 16 and not ScenePerception.is_border_or_wall(s)] if (self.memory.melody_sequence_centroids and not self.memory.melody_completed) else []
 
             is_ice = self.memory.is_ice_slider
             for target in candidate_targets:
@@ -2300,28 +3361,30 @@ class MyAgent(Agent):
                         if op["centroid"] != target["centroid"]:
                             r0, r1, c0, c1 = op["bbox"]
                             p_map[r0:r1+1, c0:c1+1] = False
-                path = GeodesicPlanner.plan(
-                    self.memory.avatar_pos,
-                    (tr, tc),
-                    p_map,
-                    self.memory.step_size,
-                    legal_set,
+                path = OfflinePlanner.plan_geodesic_path(
+                    start=self.memory.avatar_pos,
+                    goal=(tr, tc),
+                    passable=p_map,
+                    step_size=self.memory.step_size,
+                    legal_actions=legal_set,
                     heuristic_weight=float(self.policy.get("geodesic_heuristic_weight", 1.2)),
+                    turn_penalty=0.2,
                     hazard_radius=int(self.policy.get("hazard_repulsion_radius", 0)),
-                    wormhole_edges=self.memory.wormhole_edges,
+                    warp_edges=self.memory.wormhole_edges,
                     portal_actions=self.memory.portal_actions,
                     is_ice=is_ice,
                 )
                 if not path:
-                    path = GeodesicPlanner.plan(
-                        self.memory.avatar_pos,
-                        (target["centroid"][1], target["centroid"][0]),
-                        p_map,
-                        self.memory.step_size,
-                        legal_set,
+                    path = OfflinePlanner.plan_geodesic_path(
+                        start=self.memory.avatar_pos,
+                        goal=(target["centroid"][1], target["centroid"][0]),
+                        passable=p_map,
+                        step_size=self.memory.step_size,
+                        legal_actions=legal_set,
                         heuristic_weight=float(self.policy.get("geodesic_heuristic_weight", 1.2)),
+                        turn_penalty=0.2,
                         hazard_radius=int(self.policy.get("hazard_repulsion_radius", 0)),
-                        wormhole_edges=self.memory.wormhole_edges,
+                        warp_edges=self.memory.wormhole_edges,
                         portal_actions=self.memory.portal_actions,
                         is_ice=is_ice,
                     )
@@ -2357,14 +3420,14 @@ class MyAgent(Agent):
             if not self.memory.click_queue:
                 self.memory.solver_plan = False
             self.memory.clicked_centroids[(cx, cy)] += 1
-            act = make_action6(cx, cy, why=f"action6_solver_click_({cx},{cy})")
+            act = make_action6(cx, cy, why=f"action6_solver_click_({cx},{cy})", camera_transform=cam_tf)
             self.last_action = act
             return act
 
         # 2. Exploitation: if active_control exists and consecutive_active < 8, keep pulsing it
         if self.memory.active_control and self.memory.consecutive_active < 8:
             cx, cy = self.memory.active_control
-            act = make_action6(cx, cy, why=f"action6_exploit_actuator_({cx},{cy})_pulse_{self.memory.consecutive_active}")
+            act = make_action6(cx, cy, why=f"action6_exploit_actuator_({cx},{cy})_pulse_{self.memory.consecutive_active}", camera_transform=cam_tf)
             self.last_action = act
             return act
 
@@ -2376,7 +3439,7 @@ class MyAgent(Agent):
         if self.memory.click_queue:
             cx, cy = self.memory.click_queue.popleft()
             self.memory.clicked_centroids[(cx, cy)] += 1
-            act = make_action6(cx, cy, why=f"action6_queue_click_({cx},{cy})")
+            act = make_action6(cx, cy, why=f"action6_queue_click_({cx},{cy})", camera_transform=cam_tf)
             self.last_action = act
             return act
 
@@ -2563,7 +3626,7 @@ class MyAgent(Agent):
 
         cx, cy = self.memory.click_queue.popleft()
         self.memory.clicked_centroids[(cx, cy)] += 1
-        act = make_action6(cx, cy, why=f"action6_probe_centroid_({cx},{cy})")
+        act = make_action6(cx, cy, why=f"action6_probe_centroid_({cx},{cy})", camera_transform=cam_tf)
         self.last_action = act
         return act
 
@@ -2599,53 +3662,88 @@ class MyAgent(Agent):
         legal_set = set(legal_actions)
         last = self.last_action
 
-        def is_passable(act: GameAction) -> bool:
-            if not self.memory.avatar_pos or act not in DIRECTION_VECTORS:
-                return True
-            ar, ac = self.memory.avatar_pos
-            step = self.memory.step_size
+        if not self.memory.avatar_pos:
+            for esc in [GameAction.ACTION4, GameAction.ACTION1, GameAction.ACTION2, GameAction.ACTION3]:
+                if esc in legal_set and esc != last and esc != GameAction.ACTION5:
+                    esc.reasoning = {"why": "loop_break_fallback"}
+                    return esc
+            return None
+
+        ar, ac = self.memory.avatar_pos
+        step = self.memory.step_size
+
+        def candidate_target(act: GameAction) -> Optional[Tuple[int, int]]:
+            if act not in DIRECTION_VECTORS or act not in legal_set or act == GameAction.ACTION5:
+                return None
             dr, dc = DIRECTION_VECTORS[act]
             nr = int(np.clip(ar + dr * step, 0, 63))
             nc = int(np.clip(ac + dc * step, 0, 63))
-            return bool(self.memory.passable_map[nr, nc] and (nr, nc) != (ar, ac))
+            if (nr, nc) == (ar, ac):
+                return None
+            if not self.memory.passable_map[nr, nc]:
+                return None
+            return (nr, nc)
 
         if last in (GameAction.ACTION1, GameAction.ACTION2):
             primary_cands = [GameAction.ACTION4, GameAction.ACTION3]
-            primary_reason = "orthogonal_escape_horizontal"
             secondary_cands = [GameAction.ACTION2 if last == GameAction.ACTION1 else GameAction.ACTION1]
         elif last in (GameAction.ACTION3, GameAction.ACTION4):
             primary_cands = [GameAction.ACTION1, GameAction.ACTION2]
-            primary_reason = "orthogonal_escape_vertical"
             secondary_cands = [GameAction.ACTION4 if last == GameAction.ACTION3 else GameAction.ACTION3]
         else:
             primary_cands = [GameAction.ACTION4, GameAction.ACTION1, GameAction.ACTION2, GameAction.ACTION3]
-            primary_reason = "loop_break_passable"
             secondary_cands = []
 
-        for esc in primary_cands:
-            if esc in legal_set and esc != GameAction.ACTION5 and is_passable(esc):
-                esc.reasoning = {"why": primary_reason}
-                return esc
+        # 1. Evaluate primary orthogonal candidates scored by visitation count
+        scored_primary = []
+        for act in primary_cands:
+            tgt = candidate_target(act)
+            if tgt is not None:
+                vis = self.memory.visited_positions.get(tgt, 0)
+                scored_primary.append((vis, act))
+        if scored_primary:
+            scored_primary.sort(key=lambda x: x[0])
+            best_act = scored_primary[0][1]
+            best_act.reasoning = {"why": "orthogonal_escape_unexplored"}
+            return best_act
 
-        for esc in secondary_cands:
-            if esc in legal_set and esc != GameAction.ACTION5 and is_passable(esc):
-                esc.reasoning = {"why": "loop_break_passable"}
-                return esc
+        # 2. Evaluate secondary candidates scored by visitation count
+        scored_sec = []
+        for act in secondary_cands:
+            tgt = candidate_target(act)
+            if tgt is not None:
+                vis = self.memory.visited_positions.get(tgt, 0)
+                scored_sec.append((vis, act))
+        if scored_sec:
+            scored_sec.sort(key=lambda x: x[0])
+            best_act = scored_sec[0][1]
+            best_act.reasoning = {"why": "loop_break_passable"}
+            return best_act
 
+        # 3. Fallback: all passable directional candidates
         all_dirs = [GameAction.ACTION4, GameAction.ACTION1, GameAction.ACTION2, GameAction.ACTION3]
-        for esc in all_dirs:
-            if esc in legal_set and esc != last and esc != GameAction.ACTION5 and is_passable(esc):
-                esc.reasoning = {"why": "loop_break_passable"}
-                return esc
+        scored_all = []
+        for act in all_dirs:
+            if act != last:
+                tgt = candidate_target(act)
+                if tgt is not None:
+                    vis = self.memory.visited_positions.get(tgt, 0)
+                    scored_all.append((vis, act))
+        if scored_all:
+            scored_all.sort(key=lambda x: x[0])
+            best_act = scored_all[0][1]
+            best_act.reasoning = {"why": "loop_break_alternative"}
+            return best_act
 
+        # 4. Final non-passable fallback if strictly trapped
         for esc in primary_cands:
             if esc in legal_set and esc != GameAction.ACTION5:
-                esc.reasoning = {"why": primary_reason}
+                esc.reasoning = {"why": "orthogonal_escape_forced"}
                 return esc
 
         for esc in all_dirs:
             if esc in legal_set and esc != last and esc != GameAction.ACTION5:
-                esc.reasoning = {"why": "loop_break_alternative"}
+                esc.reasoning = {"why": "loop_break_forced"}
                 return esc
 
         return None
@@ -2661,6 +3759,7 @@ class MyAgent(Agent):
         ]
         color_freq = collections.Counter(s["color"] for s in non_wall_sprites)
 
+        hud_row_max = min(14, max(6, self.memory.step_size * 2 + 2))
         for s in sprites:
             cy, cx = s["centroid"][1], s["centroid"][0]
             if s["centroid"] in self.memory.visited_targets:
@@ -2673,7 +3772,7 @@ class MyAgent(Agent):
             # Filter out walls/borders and non-goal top HUD display beacons
             if ScenePerception.is_border_or_wall(s) or s["color"] == 0:
                 continue
-            if bool(self.memory.melody_sequence_centroids) and s["color"] != 14 and s["bbox"][0] <= self.memory.step_size * 3 and s["size"] <= 16:
+            if bool(self.memory.melody_sequence_centroids) and s["color"] != 14 and s["bbox"][0] <= hud_row_max and s["size"] <= 16:
                 continue
             if getattr(self.memory, 'is_unbounded_void', False) and s["color"] == 5:
                 continue
@@ -2687,7 +3786,7 @@ class MyAgent(Agent):
                 cy, cx = s["centroid"][1], s["centroid"][0]
                 if s["color"] in self.memory.avatar_colors or (abs(cy - ar) < 2 and abs(cx - ac) < 2):
                     continue
-                if bool(self.memory.melody_sequence_centroids) and s["color"] != 14 and s["bbox"][0] <= self.memory.step_size * 3 and s["size"] <= 16:
+                if bool(self.memory.melody_sequence_centroids) and s["color"] != 14 and s["bbox"][0] <= hud_row_max and s["size"] <= 16:
                     continue
                 if getattr(self.memory, 'is_unbounded_void', False) and s["color"] == 5:
                     continue
@@ -2703,16 +3802,55 @@ class MyAgent(Agent):
             if c not in (0, 2, 5, 7, 14) and 2 <= color_freq[c] <= 8:
                 self.memory.collectible_colors.add(c)
 
+        # Check if terminal Goal (color 14) is reachable via passable map
+        goal_reachable = False
+        goal_centroids = [
+            (s["centroid"][1], s["centroid"][0])
+            for s in non_wall_sprites if s["color"] == 14
+        ]
+        if goal_centroids and avatar_pos is not None:
+            gr, gc = goal_centroids[0]
+            test_path = GeodesicPlanner.plan(
+                avatar_pos,
+                (gr, gc),
+                self.memory.passable_map,
+                self.memory.step_size,
+                max_expansions=300,
+            )
+            if test_path is not None and len(test_path) > 0:
+                goal_reachable = True
+
+        # Check for chromatic filter gates (e.g. ng12 color 12 = 1 + 2)
+        has_chromatic_gate = any(s["color"] == 12 for s in sprites)
+        chromatic_satisfied = False
+        if has_chromatic_gate:
+            f1_visited = any(s["color"] == 1 and s["centroid"] in self.memory.visited_targets for s in sprites)
+            f2_visited = any(s["color"] == 2 and s["centroid"] in self.memory.visited_targets for s in sprites)
+            chromatic_satisfied = (f1_visited and f2_visited)
+
         def target_priority(item):
             s = item[1]
             c = s["color"]
             freq = color_freq[c]
+            if has_chromatic_gate and not chromatic_satisfied:
+                # Prioritize constituent fountains (1 and 2) before gate (12) and goal (14)
+                if c in (1, 2):
+                    return (0, item[0])
+                elif c == 12:
+                    return (2, item[0])
+                elif c == 14:
+                    return (3, item[0])
+                else:
+                    return (1, item[0])
+            if c == 14 and goal_reachable:
+                # Top priority: once path to goal is unblocked, win immediately
+                return (-1, item[0])
             if has_action5:
                 if c in self.memory.collectible_colors:
                     tier = 0
-                elif c == 14:
-                    tier = 1
                 elif c in (2, 3, 4, 8, 9, 15) or 1 <= freq <= 8:
+                    tier = 1
+                elif c == 14:
                     tier = 2
                 else:
                     tier = 3
@@ -2738,11 +3876,16 @@ class MyAgent(Agent):
                 ar, ac = self.memory.avatar_pos
                 step = self.memory.step_size
                 passable_dirs = []
-                for a in directional:
-                    dr, dc = DIRECTION_VECTORS[a]
-                    nr, nc = int(np.clip(ar + dr * step, 0, 63)), int(np.clip(ac + dc * step, 0, 63))
-                    if self.memory.passable_map[nr, nc] and (nr, nc) != (ar, ac):
-                        passable_dirs.append(a)
+                for s_mult in (1, 2):
+                    eff_step = step * s_mult
+                    for a in directional:
+                        dr, dc = DIRECTION_VECTORS[a]
+                        nr, nc = int(np.clip(ar + dr * eff_step, 0, 63)), int(np.clip(ac + dc * eff_step, 0, 63))
+                        if self.memory.passable_map[nr, nc] and (nr, nc) != (ar, ac):
+                            if a not in passable_dirs:
+                                passable_dirs.append(a)
+                    if passable_dirs:
+                        break
                 if passable_dirs:
                     action = random.choice(passable_dirs)
                     action.reasoning = {"why": "fallback_passable_directional"}
