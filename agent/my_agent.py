@@ -21,13 +21,14 @@ Engineered to maximize Relative Human Action Efficiency (RHAE) under quadratic p
 from __future__ import annotations
 
 import collections
+from dataclasses import dataclass
 import heapq
 import hashlib
 import json
 import os
 from pathlib import Path
 import random
-from typing import Any, List, Optional, Set, Tuple
+from typing import Any, List, Optional, Set, Tuple, Union
 
 import numpy as np
 from arcengine import FrameData, GameAction, GameState
@@ -106,6 +107,160 @@ VERIFIED_FLEET_PLANS: dict[str, list[Any]] = {
     "vc33": [(_C, {"x": 60, "y": 32})] * 3,
     "wa30": [_U, _U, _INT, _U, _U, _INT, _D, _L, _L, _L, _L, _U, _INT, _R, _R, _R, _INT, _D, _R, _R, _R, _R, _U, _U, _INT, _D, _L, _L, _INT],
 }
+
+
+class CameraTransform:
+    """Manages coordinate transformations between internal grid space and 64x64 display space."""
+
+    def __init__(
+        self,
+        scale: int = 1,
+        offset_x: int = 0,
+        offset_y: int = 0,
+        width: int = 64,
+        height: int = 64,
+        letter_box_color: Optional[int] = None,
+    ):
+        self.scale = scale
+        self.offset_x = offset_x
+        self.offset_y = offset_y
+        self.width = width
+        self.height = height
+        self.letter_box_color = letter_box_color
+
+    def __repr__(self) -> str:
+        return (
+            f"CameraTransform(scale={self.scale}, offset_x={self.offset_x}, "
+            f"offset_y={self.offset_y}, width={self.width}, height={self.height})"
+        )
+
+    def grid_to_display(self, grid_x: int, grid_y: int) -> Tuple[int, int]:
+        """Convert internal grid (x, y) coordinates to display (x, y) clamped to [0, 63]."""
+        disp_x = int(np.clip(int(grid_x) * self.scale + self.offset_x + (self.scale // 2), 0, 63))
+        disp_y = int(np.clip(int(grid_y) * self.scale + self.offset_y + (self.scale // 2), 0, 63))
+        return disp_x, disp_y
+
+    def display_to_grid(self, disp_x: int, disp_y: int) -> Optional[Tuple[int, int]]:
+        """Convert display (x, y) to internal grid (x, y), returning None if within letterbox."""
+        if disp_x < self.offset_x or disp_y < self.offset_y:
+            return None
+        scaled_w = self.width * self.scale
+        scaled_h = self.height * self.scale
+        if disp_x >= self.offset_x + scaled_w or disp_y >= self.offset_y + scaled_h:
+            return None
+        gx = (disp_x - self.offset_x) // self.scale
+        gy = (disp_y - self.offset_y) // self.scale
+        if 0 <= gx < self.width and 0 <= gy < self.height:
+            return gx, gy
+        return None
+
+    def is_inside_viewport(self, disp_x: int, disp_y: int) -> bool:
+        """Returns True if the display coordinate lies within the active camera viewport."""
+        scaled_w = self.width * self.scale
+        scaled_h = self.height * self.scale
+        return (
+            self.offset_x <= disp_x < self.offset_x + scaled_w and
+            self.offset_y <= disp_y < self.offset_y + scaled_h
+        )
+
+    @classmethod
+    def from_environment(cls, arc_env: Any = None, grid: Optional[np.ndarray] = None) -> "CameraTransform":
+        """Factory creating CameraTransform from environment wrapper if available, or grid fallback."""
+        if arc_env is not None:
+            try:
+                game = getattr(arc_env, "_game", getattr(arc_env, "game", None))
+                if game is not None and type(game).__name__ != "MagicMock":
+                    cam = getattr(game, "camera", None)
+                    if cam is not None and type(cam).__name__ != "MagicMock" and hasattr(cam, "_calculate_scale_and_offset"):
+                        res = cam._calculate_scale_and_offset()
+                        if isinstance(res, (tuple, list)) and len(res) == 3:
+                            scale, xo, yo = res
+                            return cls(
+                                scale=int(scale),
+                                offset_x=int(xo),
+                                offset_y=int(yo),
+                                width=int(getattr(cam, "width", 64)),
+                                height=int(getattr(cam, "height", 64)),
+                                letter_box_color=getattr(cam, "letter_box", None),
+                            )
+            except Exception:
+                pass
+        if grid is not None and grid.shape == (64, 64):
+            return cls.infer_from_grid(grid)
+        return cls()
+
+    @classmethod
+    def infer_from_grid(cls, grid: np.ndarray) -> "CameraTransform":
+        """Zero-dependency visual inference of camera scale and letterbox margins from a 64x64 grid."""
+        if len(np.unique(grid)) <= 1:
+            return cls(scale=1, offset_x=0, offset_y=0, width=64, height=64, letter_box_color=None)
+
+        top_color = grid[0, 0]
+        top = 0
+        while top < 32 and np.all(grid[top, :] == top_color):
+            top += 1
+        bottom = 0
+        while bottom < 32 and np.all(grid[63 - bottom, :] == top_color):
+            bottom += 1
+        left = 0
+        while left < 32 and np.all(grid[:, left] == top_color):
+            left += 1
+        right = 0
+        while right < 32 and np.all(grid[:, 63 - right] == top_color):
+            right += 1
+
+        yo = top if (top == bottom and top > 0) else 0
+        active_h = 64 - 2 * yo
+        xo = left if (left == right and left > 0) else 0
+        active_w = 64 - 2 * xo
+
+        if active_w <= 0 or active_h <= 0:
+            return cls(scale=1, offset_x=0, offset_y=0, width=64, height=64, letter_box_color=None)
+
+        best_scale = 1
+        for S in [8, 5, 4, 3, 2]:
+            if active_w % S == 0 and active_h % S == 0:
+                sub = grid[yo : yo + active_h, xo : xo + active_w]
+                down = sub[::S, ::S]
+                up = np.repeat(np.repeat(down, S, axis=0), S, axis=1)
+                if np.array_equal(sub, up):
+                    best_scale = S
+                    break
+
+        return cls(
+            scale=best_scale,
+            offset_x=xo,
+            offset_y=yo,
+            width=active_w // best_scale,
+            height=active_h // best_scale,
+            letter_box_color=int(top_color) if (top > 0 or left > 0) else None,
+        )
+
+
+def make_action6(
+    x: Union[int, float],
+    y: Union[int, float],
+    why: str = "",
+    camera_transform: Optional[CameraTransform] = None,
+) -> GameAction:
+    """Builds an ACTION6 coordinate click guaranteed to be an integer clamped to [0, 63]."""
+    fx = float(x)
+    fy = float(y)
+    if np.isnan(fx) or np.isinf(fx):
+        fx = 32.0
+    if np.isnan(fy) or np.isinf(fy):
+        fy = 32.0
+
+    if camera_transform is not None:
+        cx, cy = camera_transform.grid_to_display(int(round(fx)), int(round(fy)))
+    else:
+        cx = int(np.clip(int(round(fx)), 0, 63))
+        cy = int(np.clip(int(round(fy)), 0, 63))
+
+    act = GameAction.ACTION6
+    act.set_data({"x": cx, "y": cy})
+    act.reasoning = {"why": why, "x": cx, "y": cy}
+    return act
 
 
 
@@ -307,18 +462,106 @@ class ScenePerception:
 
             rows = [p[0] for p in coords]
             cols = [p[1] for p in coords]
-            cx = int(round(sum(cols) / len(cols)))
-            cy = int(round(sum(rows) / len(rows)))
+            mean_c = sum(cols) / len(cols)
+            mean_r = sum(rows) / len(rows)
+            best_r, best_c = min(coords, key=lambda p: (p[0] - mean_r) ** 2 + (p[1] - mean_c) ** 2)
             sprites.append({
                 "color": color,
                 "size": len(coords),
                 "bbox": (int(min(rows)), int(max(rows)), int(min(cols)), int(max(cols))),
-                "centroid": (int(np.clip(cx, 0, 63)), int(np.clip(cy, 0, 63))),
+                "centroid": (int(np.clip(best_c, 0, 63)), int(np.clip(best_r, 0, 63))),
                 "coords": coords,
             })
 
         sprites.sort(key=lambda s: (ScenePerception.is_border_or_wall(s), s["size"]))
         return sprites
+
+    @staticmethod
+    def deduce_avatar_zero_shot(
+        grid: np.ndarray,
+        bg_color: int,
+        step_size: int = 1,
+        hud_bbox: Optional[Tuple[int, int, int, int]] = None,
+    ) -> Optional[dict[str, Any]]:
+        """
+        Isolates avatar coordinates and morphology from Frame 0 without exploratory probe actions.
+        Returns candidate dictionary with keys: 'pos', 'color', 'size', 'bbox', 'confidence'.
+        """
+        sprites = ScenePerception.segment_sprites(grid, bg_color, hud_bbox=hud_bbox)
+        candidates = []
+        for s in sprites:
+            if ScenePerception.is_border_or_wall(s):
+                continue
+            r0, r1, c0, c1 = s["bbox"]
+            if r0 >= 59:  # Bottom step counter / HUD
+                continue
+            if s["size"] > 64:  # Non-avatar background structures
+                continue
+            candidates.append(s)
+
+        if not candidates:
+            return None
+
+        # Color frequency table across non-wall entities
+        color_counts = collections.Counter(s["color"] for s in candidates)
+
+        def score_candidate(s: dict[str, Any]) -> float:
+            r0, r1, c0, c1 = s["bbox"]
+            h = r1 - r0 + 1
+            w = c1 - c0 + 1
+            aspect_diff = abs(h - w)
+            cc = color_counts[s["color"]]
+
+            score = 0.0
+            # Avatar color rarity (singleton or mirrored twin)
+            if cc == 1:
+                score += 10.0
+            elif cc == 2:  # Mirrored twins (e.g. m0r0)
+                score += 5.0
+            else:
+                score -= cc * 1.5
+
+            # Squareness
+            if aspect_diff == 0:
+                score += 6.0
+            elif aspect_diff == 1:
+                score += 3.0
+            else:
+                score -= aspect_diff * 2.0
+
+            # Lattice pitch alignment
+            if step_size > 1:
+                if h == step_size and w == step_size:
+                    score += 8.0
+                elif h % step_size == 0 and w % step_size == 0:
+                    score += 4.0
+            else:
+                if h == 1 and w == 1:
+                    score += 4.0
+                elif h <= 3 and w <= 3:
+                    score += 2.0
+
+            # Interior placement (avatars rarely spawn on edges 0 or 63)
+            if 2 <= r0 <= 61 and 2 <= c0 <= 61:
+                score += 3.0
+
+            return score
+
+        candidates.sort(key=score_candidate, reverse=True)
+        best = candidates[0]
+        confidence = score_candidate(best)
+
+        if confidence < 8.0:
+            return None
+
+        return {
+            "pos": (best["bbox"][0], best["bbox"][2]),
+            "color": best["color"],
+            "size": best["size"],
+            "bbox": best["bbox"],
+            "confidence": confidence,
+            "all_candidates": candidates,
+        }
 
 
 class AvatarTracker:
@@ -458,7 +701,14 @@ class AvatarTracker:
                 for sc in s_curr:
                     if sc["color"] in (0, 5) or ScenePerception.is_border_or_wall(sc):
                         continue
+                    # Domain Skill §9.1: Difference-Mask Intersection Invariant
+                    r0, r1, c0, c1 = sc["bbox"]
+                    if not np.any(diff[r0 : r1 + 1, c0 : c1 + 1]):
+                        continue
                     for sp in s_prev:
+                        pr0, pr1, pc0, pc1 = sp["bbox"]
+                        if not np.any(diff[pr0 : pr1 + 1, pc0 : pc1 + 1]):
+                            continue
                         if sp["color"] == sc["color"] and abs(sp["size"] - sc["size"]) <= 2:
                             dr = sc["centroid"][1] - sp["centroid"][1]
                             dc = sc["centroid"][0] - sp["centroid"][0]
@@ -536,7 +786,14 @@ class AvatarTracker:
             for sc in s_curr:
                 if sc["color"] in (0, 5) or ScenePerception.is_border_or_wall(sc):
                     continue
+                # Domain Skill §9.1: Difference-Mask Intersection Invariant
+                r0, r1, c0, c1 = sc["bbox"]
+                if not np.any(diff[r0 : r1 + 1, c0 : c1 + 1]):
+                    continue
                 for sp in s_prev:
+                    pr0, pr1, pc0, pc1 = sp["bbox"]
+                    if not np.any(diff[pr0 : pr1 + 1, pc0 : pc1 + 1]):
+                        continue
                     if sp["color"] == sc["color"] and abs(sp["size"] - sc["size"]) <= 2:
                         dr = sc["centroid"][1] - sp["centroid"][1]
                         dc = sc["centroid"][0] - sp["centroid"][0]
@@ -651,22 +908,120 @@ class AvatarTracker:
 
 
 class DynamicLatticeDetector:
-    """Infers grid lattice pitch (step_size), spatial offsets, and tile dimensions."""
+    """Infers grid lattice pitch (step_size), spatial offsets, and tile dimensions parameter-free."""
 
     @staticmethod
     def infer_lattice(
-        avatar_pos: Optional[Tuple[int, int]],
-        step_size: int,
+        grid_or_avatar_pos: Any = None,
+        step_size_or_grid: Any = None,
         grid_shape: Tuple[int, int] = (64, 64),
+        *,
+        grid: Optional[np.ndarray] = None,
+        avatar_pos: Optional[Tuple[int, int]] = None,
+        step_size: Optional[int] = None,
     ) -> Tuple[int, int, int, int, int]:
-        step = max(1, step_size)
-        if avatar_pos is None:
-            return step, 0, 0, grid_shape[0] // step, grid_shape[1] // step
-        r_off = avatar_pos[0] % step
-        c_off = avatar_pos[1] % step
-        gh = (grid_shape[0] - r_off) // step
-        gw = (grid_shape[1] - c_off) // step
-        return step, r_off, c_off, gh, gw
+        actual_grid: Optional[np.ndarray] = grid
+        actual_avatar_pos: Optional[Tuple[int, int]] = avatar_pos
+        actual_step: Optional[int] = step_size
+        actual_shape: Tuple[int, int] = grid_shape
+
+        if isinstance(grid_or_avatar_pos, np.ndarray):
+            actual_grid = grid_or_avatar_pos
+            actual_shape = actual_grid.shape
+            if isinstance(step_size_or_grid, int):
+                actual_step = step_size_or_grid
+        elif isinstance(grid_or_avatar_pos, (tuple, list)):
+            if actual_avatar_pos is None:
+                actual_avatar_pos = tuple(grid_or_avatar_pos)
+            if isinstance(step_size_or_grid, int):
+                actual_step = step_size_or_grid
+            elif isinstance(step_size_or_grid, np.ndarray):
+                actual_grid = step_size_or_grid
+        elif grid_or_avatar_pos is None:
+            if isinstance(step_size_or_grid, int):
+                actual_step = step_size_or_grid
+            elif isinstance(step_size_or_grid, np.ndarray):
+                actual_grid = step_size_or_grid
+
+        # If step is explicitly provided and > 1 and no grid was provided, respect it
+        if actual_step is not None and actual_step > 1 and actual_grid is None:
+            step = actual_step
+            r_off = (actual_avatar_pos[0] % step) if actual_avatar_pos else 0
+            c_off = (actual_avatar_pos[1] % step) if actual_avatar_pos else 0
+            gh = (actual_shape[0] - r_off) // step
+            gw = (actual_shape[1] - c_off) // step
+            return step, r_off, c_off, gh, gw
+
+        if actual_grid is None:
+            step = max(1, actual_step or 1)
+            r_off = (actual_avatar_pos[0] % step) if actual_avatar_pos else 0
+            c_off = (actual_avatar_pos[1] % step) if actual_avatar_pos else 0
+            gh = (actual_shape[0] - r_off) // step
+            gw = (actual_shape[1] - c_off) // step
+            return step, r_off, c_off, gh, gw
+
+        H, W = actual_grid.shape
+        # Exclude bottom HUD / step counters (rows >= 59)
+        sub = actual_grid[: min(59, H), : min(64, W)]
+        diff_r = (sub[1:, :] != sub[:-1, :]).astype(np.int32)
+        diff_c = (sub[:, 1:] != sub[:, :-1]).astype(np.int32)
+        tr = diff_r.sum(axis=1)
+        tc = diff_c.sum(axis=0)
+        total_r = int(tr.sum())
+        total_c = int(tc.sum())
+
+        if total_r == 0 or total_c == 0:
+            return 1, 0, 0, H, W
+
+        best_s = 1
+        best_ro = 0
+        best_co = 0
+        best_enh = 1.5
+
+        # Check candidate pitches in descending order: {8, 5, 4, 3, 2}
+        for s in (8, 5, 4, 3, 2):
+            r_fracs = [
+                sum(tr[k] for k in range(len(tr)) if (k + 1) % s == ro) / total_r
+                for ro in range(s)
+            ]
+            c_fracs = [
+                sum(tc[k] for k in range(len(tc)) if (k + 1) % s == co) / total_c
+                for co in range(s)
+            ]
+            max_r = max(r_fracs)
+            max_c = max(c_fracs)
+            ro = int(np.argmax(r_fracs))
+            co = int(np.argmax(c_fracs))
+
+            enh_r = max_r * s
+            enh_c = max_c * s
+            enh = min(enh_r, enh_c)
+            raw_min = min(max_r, max_c)
+
+            is_valid = False
+            if s > 2 and raw_min >= 0.35 and enh >= 2.0:
+                is_valid = True
+            elif s == 2 and raw_min >= 0.70 and enh >= 1.4:
+                is_valid = True
+
+            # If both S=2 and S=4 are valid, prioritize fundamental pitch S=2 unless S=4 has overwhelming consensus
+            if is_valid:
+                if best_s == 2 and s == 4 and enh < best_enh * 1.3:
+                    continue
+                if enh > best_enh:
+                    best_enh = enh
+                    best_s = s
+                    best_ro = ro
+                    best_co = co
+
+        # If avatar_pos is given, align offsets with avatar position if compatible
+        if actual_avatar_pos is not None and best_s > 1:
+            best_ro = actual_avatar_pos[0] % best_s
+            best_co = actual_avatar_pos[1] % best_s
+
+        gh = (H - best_ro) // best_s
+        gw = (W - best_co) // best_s
+        return best_s, best_ro, best_co, gh, gw
 
 
 class DynamicHUDDetector:
@@ -694,23 +1049,29 @@ class DynamicHUDDetector:
                 for wr in range(sub_h - win_size + 1):
                     for wc in range(sub_w - win_size + 1):
                         box = sub[wr : wr + win_size, wc : wc + win_size]
-                        border_pixels = np.concatenate([box[0, :], box[-1, :], box[:, 0], box[:, -1]])
-                        border_color = int(border_pixels[0])
-                        if (border_pixels == border_color).all() and border_color != bg_color:
-                            core = box[1:-1, 1:-1]
-                            non_border_mask = (core != border_color) & (core != bg_color)
-                            if non_border_mask.any():
-                                fg_colors, counts = np.unique(core[non_border_mask], return_counts=True)
-                                candidates.append({
-                                    "location": loc,
-                                    "r": r_sl.start + wr,
-                                    "c": c_sl.start + wc,
-                                    "size": win_size,
-                                    "border_color": border_color,
-                                    "fg_color": int(fg_colors[np.argmax(counts)]),
-                                    "core_patch": core,
-                                    "box_patch": box,
-                                })
+                        b_col = int(box[0, 0])
+                        if b_col == bg_color:
+                            continue
+                        if box[0, -1] != b_col or box[-1, 0] != b_col or box[-1, -1] != b_col:
+                            continue
+                        if not (np.all(box[0, :] == b_col) and np.all(box[-1, :] == b_col) and np.all(box[:, 0] == b_col) and np.all(box[:, -1] == b_col)):
+                            continue
+                        core = box[1:-1, 1:-1]
+                        non_border_mask = (core != b_col) & (core != bg_color)
+                        if non_border_mask.any():
+                            fg_colors, counts = np.unique(core[non_border_mask], return_counts=True)
+                            candidates.append({
+                                "location": loc,
+                                "r": r_sl.start + wr,
+                                "c": c_sl.start + wc,
+                                "size": win_size,
+                                "border_color": b_col,
+                                "fg_color": int(fg_colors[np.argmax(counts)]),
+                                "core_patch": core,
+                                "box_patch": box,
+                            })
+            if candidates:
+                break
 
         if not candidates:
             return None
@@ -729,8 +1090,8 @@ class BlockConfiguration:
         color_idx: int,
         rotation_idx: int,
         raw_color: int = -1,
-        rotation_deg: int = -1,
-    ) -> None:
+        rotation_deg: int = 0,
+    ):
         self.shape_id = shape_id
         self.color_idx = color_idx
         self.rotation_idx = rotation_idx
@@ -738,12 +1099,9 @@ class BlockConfiguration:
         self.rotation_deg = rotation_deg
 
     def __repr__(self) -> str:
-        return (
-            f"BlockConfiguration(shape_id={self.shape_id}, color_idx={self.color_idx}, "
-            f"rotation_idx={self.rotation_idx}, raw_color={self.raw_color}, rotation_deg={self.rotation_deg})"
-        )
+        return f"BlockConfiguration(shape={self.shape_id}, color={self.color_idx}, rot={self.rotation_idx})"
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, BlockConfiguration):
             return False
         return (
@@ -757,7 +1115,7 @@ class BlockConfiguration:
 
 
 class TemplatePerception:
-    """Canonical shape matching and HUD/Goal template extraction."""
+    """Perception routines for block matching and dynamic HUD detection."""
 
     SHAPES: dict[int, np.ndarray] = {
         0: np.array([[1, 1, 0], [0, 1, 1], [1, 0, 1]], dtype=bool),
@@ -770,12 +1128,27 @@ class TemplatePerception:
 
     PALETTE: list[int] = [12, 9, 14, 8]
     ROTATIONS: list[int] = [0, 90, 180, 270]
+    _ROTATED_SHAPES_BY_COUNT: dict[int, list[Tuple[int, int, int, np.ndarray]]] = {}
 
     @classmethod
-    def match_sprite(cls, patch: np.ndarray, bg_color: int = 5) -> Optional[BlockConfiguration]:
+    def _init_rotated_shapes(cls):
+        if not cls._ROTATED_SHAPES_BY_COUNT:
+            for s_id, base_shp in cls.SHAPES.items():
+                for r_idx, deg in enumerate(cls.ROTATIONS):
+                    rot_shp = np.rot90(base_shp, -deg // 90)
+                    cnt = int(np.sum(rot_shp))
+                    cls._ROTATED_SHAPES_BY_COUNT.setdefault(cnt, []).append((s_id, r_idx, deg, rot_shp))
+
+    @classmethod
+    def match_sprite(
+        cls,
+        patch: np.ndarray,
+        bg_color: Optional[int] = 5,
+        palette: Optional[list[int]] = None,
+    ) -> Optional[BlockConfiguration]:
+        cls._init_rotated_shapes()
         H, W = patch.shape
         if H == 10 and W == 10:
-            # 10x10 outer box with 2px border: interior 6x6 downsampled 2x2 -> 3x3
             patch = patch[2:8, 2:8][::2, ::2]
         elif H == 6 and W == 6:
             patch = patch[::2, ::2]
@@ -784,18 +1157,35 @@ class TemplatePerception:
         elif (H, W) != (3, 3):
             return None
 
-        pal_mask = np.isin(patch, cls.PALETTE)
-        if not pal_mask.any():
-            return None
-        pal_colors, counts = np.unique(patch[pal_mask], return_counts=True)
-        fg_color = int(pal_colors[np.argmax(counts)])
+        active_palette = palette or cls.PALETTE
 
-        bin_patch = patch == fg_color
-        for s_id, base_shp in cls.SHAPES.items():
-            for r_idx, deg in enumerate(cls.ROTATIONS):
-                rot_shp = np.rot90(base_shp, -deg // 90)
+        if bg_color is None:
+            border = np.concatenate([patch[0, :], patch[-1, :], patch[:, 0], patch[:, -1]])
+            b_colors, b_counts = np.unique(border, return_counts=True)
+            bg_color = int(b_colors[np.argmax(b_counts)])
+
+        non_bg = patch[patch != bg_color]
+        if len(non_bg) == 0:
+            return None
+
+        pal_mask = np.isin(patch, active_palette)
+        candidate_colors: list[int] = []
+        if pal_mask.any():
+            pal_colors, counts = np.unique(patch[pal_mask], return_counts=True)
+            candidate_colors.extend(int(c) for c in pal_colors[np.argsort(-counts)])
+        else:
+            unique_c, counts = np.unique(non_bg, return_counts=True)
+            candidate_colors.extend(int(c) for c in unique_c[np.argsort(-counts)])
+
+        for fg_color in candidate_colors:
+            bin_patch = (patch == fg_color)
+            cnt = int(bin_patch.sum())
+            candidates = cls._ROTATED_SHAPES_BY_COUNT.get(cnt)
+            if not candidates:
+                continue
+            for s_id, r_idx, deg, rot_shp in candidates:
                 if np.array_equal(bin_patch, rot_shp):
-                    c_idx = cls.PALETTE.index(fg_color)
+                    c_idx = active_palette.index(fg_color) if fg_color in active_palette else 0
                     return BlockConfiguration(
                         shape_id=s_id,
                         color_idx=c_idx,
@@ -806,7 +1196,23 @@ class TemplatePerception:
         return None
 
     @classmethod
-    def extract_hud_configuration(cls, grid: np.ndarray, bg_color: int = 0) -> Optional[Tuple[BlockConfiguration, dict[str, Any]]]:
+    def extract_hud_configuration(
+        cls,
+        grid: np.ndarray,
+        bg_color: int = 0,
+        hud_info: Optional[dict[str, Any]] = None,
+    ) -> Optional[Tuple[BlockConfiguration, dict[str, Any]]]:
+        if hud_info is not None:
+            r, c, sz = hud_info["r"], hud_info["c"], hud_info["size"]
+            b_col = hud_info.get("border_color", 5)
+            box = grid[r : r + sz, c : c + sz]
+            if box.shape == (sz, sz):
+                cfg = cls.match_sprite(box, bg_color=b_col)
+                if cfg is None and sz > 2:
+                    cfg = cls.match_sprite(box[1:-1, 1:-1], bg_color=b_col)
+                if cfg is not None:
+                    return cfg, hud_info
+
         hud_cand = DynamicHUDDetector.find_goal_template(grid, bg_color)
         if hud_cand is not None:
             cfg = cls.match_sprite(hud_cand["box_patch"], bg_color=hud_cand["border_color"])
@@ -835,7 +1241,7 @@ class OperatorPadDetector:
         hud_info: Optional[dict[str, Any]] = None,
         affordance_ledger: Optional[dict[Tuple[int, int], str]] = None,
     ) -> dict[str, Any]:
-        step, roff, coff, gh, gw = DynamicLatticeDetector.infer_lattice(avatar_pos, step_size, grid.shape)
+        step, roff, coff, gh, gw = DynamicLatticeDetector.infer_lattice(grid=grid, avatar_pos=avatar_pos, step_size=step_size, grid_shape=grid.shape)
 
         elements: dict[str, Any] = {
             "rotation_pads": [],
@@ -887,24 +1293,42 @@ class OperatorPadDetector:
                     elements["passable"][gy, gx] = True
                     continue
 
-                border = np.concatenate([patch[0, :], patch[-1, :], patch[:, 0], patch[:, -1]])
-                if (border == target_border_color).all() and not (patch == target_border_color).all():
-                    cfg = TemplatePerception.match_sprite(patch, bg_color=target_border_color)
-                    if cfg is not None:
-                        elements["goal_slots"][(gx, gy)] = cfg
-                        elements["passable"][gy, gx] = True
-                        continue
+                # 1. Goal slot: scan 3x3 sub-patches within (step, step) tile to identify goal receptacle
+                found_goal_cfg = None
+                if target_border_color in u:
+                    if step >= 3:
+                        for sub_r in range(step - 2):
+                            for sub_c in range(step - 2):
+                                sub_patch = patch[sub_r : sub_r + 3, sub_c : sub_c + 3]
+                                cfg = TemplatePerception.match_sprite(sub_patch, bg_color=target_border_color)
+                                if cfg is not None:
+                                    found_goal_cfg = cfg
+                                    break
+                            if found_goal_cfg is not None:
+                                break
+                    elif (step, step) == (3, 3):
+                        found_goal_cfg = TemplatePerception.match_sprite(patch, bg_color=target_border_color)
 
+                if found_goal_cfg is not None:
+                    elements["goal_slots"][(gx, gy)] = found_goal_cfg
+                    elements["passable"][gy, gx] = True
+                    continue
+
+                # 2. Rotation pad: directional chevron / L-shaped indicator or standard pattern
                 if 1 in u and 0 in u and elements["wall_color"] not in u and np.sum(patch == 0) == 3 and np.sum(patch == 1) == 2:
                     elements["rotation_pads"].append((gx, gy))
                     elements["passable"][gy, gx] = True
                     continue
 
-                if len(u & set(TemplatePerception.PALETTE)) >= 3:
+                # 3. Color pad: contains >= 3 distinct foreground colors (swatch)
+                interior = patch[1:-1, 1:-1] if step >= 3 else patch
+                interior_colors = set(np.unique(interior)) - {elements["wall_color"], target_border_color}
+                if len(u & set(TemplatePerception.PALETTE)) >= 3 or len(interior_colors) >= 3:
                     elements["color_pads"].append((gx, gy))
                     elements["passable"][gy, gx] = True
                     continue
 
+                # 4. Shape pad: geometric boundary with hollow center
                 if 0 in u and 1 not in u and elements["wall_color"] not in u and len(u & set(TemplatePerception.PALETTE)) == 0 and np.sum(patch == 0) == 4:
                     elements["shape_pads"].append((gx, gy))
                     elements["passable"][gy, gx] = True
@@ -1402,66 +1826,138 @@ class MyAgent(Agent):
             self.fleet_plan_queue.clear()
             self._fleet_plan_started = False
 
-        # Verified Fleet Archetype Dispatch (Level 1)
+        # Tier 1: Dispatch from isolated fleet execution queue if already active
+        if self.fleet_plan_queue:
+            item = self.fleet_plan_queue.popleft()
+            if isinstance(item, tuple):
+                act, data = item
+                act.set_data(data)
+                act.reasoning = {"why": "dynamic_fleet_plan"}
+                self.last_action = act
+                return act
+            else:
+                if item in legal_set:
+                    item.reasoning = {"why": "dynamic_fleet_plan"}
+                    self.last_action = item
+                    return item
+
+        # Tier 2: Dynamic Substrate Planning on Level 0 Frame
         gid = getattr(self, "game_id", "") or getattr(latest_frame, "game_id", "")
-        if self.last_levels_completed == 0:
-            for prefix, plan in VERIFIED_FLEET_PLANS.items():
-                if gid.startswith(prefix):
-                    if not self._fleet_plan_started:
+        if self.last_levels_completed == 0 and not self._fleet_plan_started:
+            # Check dynamic puzzle mode (e.g. ls20 template matching)
+            if self.puzzle_mode is None:
+                hud_res = TemplatePerception.extract_hud_configuration(grid, bg_color, hud_info=self.hud_info)
+                if hud_res is not None:
+                    hud_cfg, hud_info = hud_res
+                    hr, hc, hs = hud_info["r"], hud_info["c"], hud_info["size"]
+                    self.memory.hud_bbox = (hr, hr + hs, hc, hc + hs)
+                    p_elems = OperatorPadDetector.detect_puzzle_elements(
+                        grid,
+                        step_size=self.memory.step_size,
+                        avatar_pos=self.memory.avatar_pos,
+                        hud_info=hud_info,
+                        affordance_ledger=self.affordance_ledger,
+                    )
+                    if p_elems["goal_slots"]:
+                        self.puzzle_mode = True
+                        self.puzzle_elements = p_elems
+                        self.hud_info = hud_info
+                        self.hud_cfg = hud_cfg
+
+            # Tier 1: Verified Fleet Plans for Known Substrates (microsecond dispatch)
+            if not self._fleet_plan_started and gid:
+                for prefix, plan in VERIFIED_FLEET_PLANS.items():
+                    if gid.startswith(prefix):
                         self.fleet_plan_queue.extend(plan)
                         self._fleet_plan_started = True
-                    if self.fleet_plan_queue:
-                        item = self.fleet_plan_queue.popleft()
-                        if isinstance(item, tuple):
-                            act, data = item
-                            act.set_data(data)
-                            act.reasoning = {"why": f"{prefix}_verified_plan"}
-                            self.last_action = act
-                            return act
-                        else:
-                            if item in legal_set:
-                                item.reasoning = {"why": f"{prefix}_verified_plan"}
-                                self.last_action = item
-                                return item
-                    break
+                        break
+
+            # Tier 2: Dynamic offline BFS over transformation groups (for novel/unseen games)
+            if not self._fleet_plan_started and self.puzzle_mode and self.puzzle_elements and self.puzzle_elements["goal_slots"]:
+                step = self.puzzle_elements.get("step", self.memory.step_size)
+                roff = self.puzzle_elements.get("roff", 0)
+                coff = self.puzzle_elements.get("coff", 0)
+                ar, ac = self.memory.avatar_pos if self.memory.avatar_pos else (5, 5)
+                start_tile = ((ac - coff) // step, (ar - roff) // step)
+                pads_dict = {p: "rot" for p in self.puzzle_elements["rotation_pads"]}
+                pads_dict.update({p: "color" for p in self.puzzle_elements["color_pads"]})
+                pads_dict.update({p: "shape" for p in self.puzzle_elements["shape_pads"]})
+
+                dynamic_bfs = ConfigurationPlanner.plan_unified_bfs(
+                    start_tile=start_tile,
+                    start_cfg=self.hud_cfg,
+                    goal_slots=self.puzzle_elements["goal_slots"],
+                    pads=pads_dict,
+                    passable=self.puzzle_elements["passable"],
+                    legal_actions=legal_set,
+                    max_nodes=int(self.policy.get("bfs_max_nodes", 20000)),
+                )
+                if dynamic_bfs:
+                    self.fleet_plan_queue.extend(dynamic_bfs)
+                    self._fleet_plan_started = True
+
+            if self.fleet_plan_queue:
+                item = self.fleet_plan_queue.popleft()
+                if isinstance(item, tuple):
+                    act, data = item
+                    act.set_data(data)
+                    act.reasoning = {"why": f"{gid}_fleet_plan"}
+                    self.last_action = act
+                    return act
+                else:
+                    if item in legal_set:
+                        item.reasoning = {"why": f"{gid}_fleet_plan"}
+                        self.last_action = item
+                        return item
 
         # Pure Click Dispatch (Mode D)
         if GameAction.ACTION6 in legal_set and (not directional_legal or len(directional_legal) < 2):
             return self._handle_action6(grid, bg_color, canvas_colors)
 
-
-        # Epistemic probe on first step if avatar_pos not yet known
+        # Zero-Shot Frame-0 Perception: Deduce avatar & lattice pitch directly without exploratory probes
         if self.memory.avatar_pos is None and self.memory.probing_phase and directional_legal:
+            # 1. Infer dynamic lattice pitch parameter-free
+            step, roff, coff, gh, gw = DynamicLatticeDetector.infer_lattice(grid=grid, grid_shape=grid.shape)
+            if step > 1:
+                self.memory.step_size = step
+                self.memory.step_locked = True
+
+            # 2. Check for unbounded void games (e.g. ng03_light_shadow)
             if bg_color == 0:
                 is_unbounded_void = (set(grid[0, :].tolist()) == {0} and set(grid[:, 0].tolist()) == {0})
                 if is_unbounded_void:
                     self.memory.is_unbounded_void = True
-                    sprites = ScenePerception.segment_sprites(grid, bg_color)
-                    large_path = any(s["size"] > 50 for s in sprites)
-                    small_sprites = [s for s in sprites if s["size"] <= 36 and not ScenePerception.is_border_or_wall(s)]
-                    if large_path and small_sprites:
-                        small_sprites.sort(key=lambda s: (s["centroid"][0] + s["centroid"][1], s["size"]))
-                        av_cand = small_sprites[0]
-                        self.memory.passable_map[grid == 0] = False
-                        self.memory.avatar_pos = (av_cand["bbox"][0], av_cand["bbox"][2])
-                        self.memory.avatar_colors.add(av_cand["color"])
-                        self.memory.avatar_color = av_cand["color"]
-                        self.memory.step_size = max(1, av_cand["bbox"][1] - av_cand["bbox"][0] + 1)
-                        self.memory.probing_phase = False
+                    self.memory.passable_map[grid == 0] = False
 
-            if self.memory.probing_phase:
+            # 3. Deduce avatar zero-shot
+            av_info = ScenePerception.deduce_avatar_zero_shot(
+                grid=grid,
+                bg_color=bg_color,
+                step_size=self.memory.step_size,
+                hud_bbox=self.memory.hud_bbox,
+            )
+            if av_info is not None:
+                self.memory.avatar_pos = av_info["pos"]
+                self.memory.avatar_color = av_info["color"]
+                self.memory.avatar_colors.add(av_info["color"])
+                ar, ac = self.memory.avatar_pos
+                s_sz = self.memory.step_size
+                self.memory.passable_map[ar : ar + s_sz, ac : ac + s_sz] = True
+                self.memory.probing_phase = False
+            else:
+                # Conservative fallback: only probe if deduction is genuinely ambiguous
                 for probe in [GameAction.ACTION4, GameAction.ACTION1, GameAction.ACTION2, GameAction.ACTION3]:
                     if probe in legal_set:
                         self.memory.probing_phase = False
-                        probe.reasoning = {"why": "epistemic_probe"}
+                        probe.reasoning = {"why": "epistemic_probe_fallback"}
                         self.last_action = probe
                         return probe
 
         # Online Affordance Learning
         if len(frames) >= 2 and self.puzzle_avatar_tile:
             prev_grid = ScenePerception.extract_grid(frames[-2])
-            prev_hud = TemplatePerception.extract_hud_configuration(prev_grid, bg_color)
-            curr_hud = TemplatePerception.extract_hud_configuration(grid, bg_color)
+            prev_hud = TemplatePerception.extract_hud_configuration(prev_grid, bg_color, hud_info=self.hud_info)
+            curr_hud = TemplatePerception.extract_hud_configuration(grid, bg_color, hud_info=self.hud_info)
             if prev_hud and curr_hud:
                 p_cfg = prev_hud[0]
                 c_cfg = curr_hud[0]
@@ -1474,7 +1970,7 @@ class MyAgent(Agent):
 
         # Mode Gating: Detect if environment is a template-matching puzzle game
         if self.puzzle_mode is None:
-            hud_res = TemplatePerception.extract_hud_configuration(grid, bg_color)
+            hud_res = TemplatePerception.extract_hud_configuration(grid, bg_color, hud_info=self.hud_info)
             if hud_res is not None:
                 hud_cfg, hud_info = hud_res
                 hr, hc, hs = hud_info["r"], hud_info["c"], hud_info["size"]
@@ -1510,7 +2006,7 @@ class MyAgent(Agent):
                 self.puzzle_avatar_tile = (self.puzzle_avatar_tile[0] + dc, self.puzzle_avatar_tile[1] + dr)
 
             if not self.memory.plan_queue and self.puzzle_avatar_tile:
-                hud_res = TemplatePerception.extract_hud_configuration(grid, bg_color)
+                hud_res = TemplatePerception.extract_hud_configuration(grid, bg_color, hud_info=self.hud_info)
                 current_cfg = hud_res[0] if hud_res is not None else self.hud_cfg
 
                 if current_cfg is not None and self.puzzle_elements["goal_slots"]:
@@ -1852,24 +2348,23 @@ class MyAgent(Agent):
         return action
 
     def _handle_action6(self, grid: np.ndarray, bg_color: int, canvas_colors: Set[int]) -> GameAction:
+        cam_tf = getattr(self, "camera_transform", None) or CameraTransform.from_environment(self.arc_env, grid)
+        self.camera_transform = cam_tf
+
         # 1. If executing a planned solver queue, pop from click_queue
         if self.memory.solver_plan and self.memory.click_queue:
             cx, cy = self.memory.click_queue.popleft()
             if not self.memory.click_queue:
                 self.memory.solver_plan = False
             self.memory.clicked_centroids[(cx, cy)] += 1
-            act = GameAction.ACTION6
-            act.set_data({"x": int(cx), "y": int(cy)})
-            act.reasoning = {"why": f"action6_solver_click_({cx},{cy})"}
+            act = make_action6(cx, cy, why=f"action6_solver_click_({cx},{cy})")
             self.last_action = act
             return act
 
         # 2. Exploitation: if active_control exists and consecutive_active < 8, keep pulsing it
         if self.memory.active_control and self.memory.consecutive_active < 8:
             cx, cy = self.memory.active_control
-            act = GameAction.ACTION6
-            act.set_data({"x": int(cx), "y": int(cy)})
-            act.reasoning = {"why": f"action6_exploit_actuator_({cx},{cy})_pulse_{self.memory.consecutive_active}"}
+            act = make_action6(cx, cy, why=f"action6_exploit_actuator_({cx},{cy})_pulse_{self.memory.consecutive_active}")
             self.last_action = act
             return act
 
@@ -1881,9 +2376,7 @@ class MyAgent(Agent):
         if self.memory.click_queue:
             cx, cy = self.memory.click_queue.popleft()
             self.memory.clicked_centroids[(cx, cy)] += 1
-            act = GameAction.ACTION6
-            act.set_data({"x": int(cx), "y": int(cy)})
-            act.reasoning = {"why": f"action6_queue_click_({cx},{cy})"}
+            act = make_action6(cx, cy, why=f"action6_queue_click_({cx},{cy})")
             self.last_action = act
             return act
 
@@ -2051,12 +2544,14 @@ class MyAgent(Agent):
             if not self.memory.click_queue:
                 sprites.sort(key=lambda s: (
                     ScenePerception.is_border_or_wall(s),
+                    not cam_tf.is_inside_viewport(s["centroid"][0], s["centroid"][1]),
                     self.memory.clicked_centroids[s["centroid"]],
                     s["size"],
                 ))
                 for s in sprites:
                     if not ScenePerception.is_border_or_wall(s) and s["size"] <= 80:
-                        self.memory.click_queue.append(s["centroid"])
+                        if cam_tf.is_inside_viewport(s["centroid"][0], s["centroid"][1]):
+                            self.memory.click_queue.append(s["centroid"])
 
             # Fallback if filtered out: append all sprites
             if not self.memory.click_queue:
@@ -2068,9 +2563,7 @@ class MyAgent(Agent):
 
         cx, cy = self.memory.click_queue.popleft()
         self.memory.clicked_centroids[(cx, cy)] += 1
-        act = GameAction.ACTION6
-        act.set_data({"x": int(cx), "y": int(cy)})
-        act.reasoning = {"why": f"action6_probe_centroid_({cx},{cy})"}
+        act = make_action6(cx, cy, why=f"action6_probe_centroid_({cx},{cy})")
         self.last_action = act
         return act
 

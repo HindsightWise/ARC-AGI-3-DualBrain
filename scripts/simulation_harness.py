@@ -64,13 +64,19 @@ HUMAN_BASELINES: Dict[str, int] = {
     "sc25": 28,
     "sk48": 30,
     "wa30": 35,
-    # 25 Novel Games
+    # 200 Novel Games
     "ng01": 25, "ng02": 25, "ng03": 30, "ng04": 20, "ng05": 30,
     "ng06": 20, "ng07": 25, "ng08": 25, "ng09": 30, "ng10": 25,
     "ng11": 25, "ng12": 30, "ng13": 20, "ng14": 25, "ng15": 25,
     "ng16": 30, "ng17": 25, "ng18": 30, "ng19": 25, "ng20": 30,
     "ng21": 20, "ng22": 20, "ng23": 20, "ng24": 15, "ng25": 30,
 }
+
+# Calibrate all novel environments ng01..ng200
+for _i in range(1, 201):
+    _k = f"ng{_i:02d}" if _i < 100 else f"ng{_i}"
+    if _k not in HUMAN_BASELINES:
+        HUMAN_BASELINES[_k] = 25
 
 
 def run_single_episode(
@@ -198,7 +204,9 @@ def main():
     parser.add_argument("--games", type=str, default="ls20,tn36,vc33,tu93", help="Comma-separated game IDs or 'all'")
     parser.add_argument("--steps", type=int, default=40, help="Max steps per game")
     parser.add_argument("--synthetic", type=int, default=4, help="Number of synthetic games to generate and test")
-    parser.add_argument("--novel-all", action="store_true", help="Benchmark all 25 novel games (ng01..ng25)")
+    parser.add_argument("--novel-all", action="store_true", help="Benchmark all 200 novel games (ng01..ng200)")
+    parser.add_argument("--novel-range", type=int, nargs=2, metavar=("START", "END"), help="Benchmark novel games in range START..END (e.g. 1 50)")
+    parser.add_argument("--novel-paradigm", type=int, choices=range(1, 8), help="Benchmark specific paradigm 1..7 (25 games each)")
     parser.add_argument("--workers", type=int, default=4, help="Number of parallel worker processes")
     parser.add_argument("--bench-fps", action="store_true", help="Run high-throughput FPS benchmark")
     args = parser.parse_args()
@@ -212,7 +220,16 @@ def main():
         return
 
     if args.novel_all:
-        game_list = [f"ng{i:02d}" for i in range(1, 26)]
+        game_list = [f"ng{i:02d}" if i < 100 else f"ng{i}" for i in range(1, 201)]
+        args.synthetic = 0
+    elif args.novel_range:
+        s, e = args.novel_range
+        game_list = [f"ng{i:02d}" if i < 100 else f"ng{i}" for i in range(s, e + 1)]
+        args.synthetic = 0
+    elif args.novel_paradigm:
+        p_start = (args.novel_paradigm - 1) * 25 + 1
+        p_end = p_start + 24
+        game_list = [f"ng{i:02d}" if i < 100 else f"ng{i}" for i in range(p_start, p_end + 1)]
         args.synthetic = 0
     elif args.games == "all":
         arc = arc_agi.Arcade(operation_mode=OperationMode.OFFLINE)

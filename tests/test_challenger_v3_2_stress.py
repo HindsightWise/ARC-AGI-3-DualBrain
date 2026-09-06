@@ -95,7 +95,7 @@ def test_action6_vc33_targeting():
     # 1. Test real vc33 frame via arc_agi
     try:
         import arc_agi
-        arc = arc_agi.Arcade()
+        arc = arc_agi.Arcade(operation_mode=arc_agi.OperationMode.OFFLINE)
         env = arc.make("vc33")
         real_frame = env.step(GameAction.RESET)
         has_real_env = True
