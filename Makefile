@@ -51,13 +51,13 @@ setup: ## One-time install: venv, arc-agi, kaggle CLI, clone framework
 	@echo "Setup complete. Try:  make play-local"
 
 play-local: ## Run agent/my_agent.py against ALL games (or GAME=ls20 for a single one)
-	$(VENV_PY) scripts/play_local.py $(if $(GAME),--game $(GAME)) --max-steps $(STEPS)
+	MPLCONFIGDIR=/tmp/matplotlib $(VENV_PY) scripts/play_local.py $(if $(GAME),--game $(GAME)) --max-steps $(STEPS)
 
 verify-local: ## Quick smoke test: 50 steps on ls20 + vc33 only
-	$(VENV_PY) scripts/play_local.py --game ls20,vc33 --max-steps 50
+	MPLCONFIGDIR=/tmp/matplotlib $(VENV_PY) scripts/play_local.py --game ls20,vc33 --max-steps 50
 
 list-games: ## Show all available games
-	$(VENV_PY) scripts/play_local.py --list
+	MPLCONFIGDIR=/tmp/matplotlib $(VENV_PY) scripts/play_local.py --list
 
 simulate: ## High-speed parallel simulation benchmark (e.g. make simulate GAMES=ls20,tn36)
 	MPLCONFIGDIR=/tmp/matplotlib $(VENV_PY) scripts/simulation_harness.py $(if $(GAMES),--games $(GAMES)) $(if $(STEPS),--steps $(STEPS))

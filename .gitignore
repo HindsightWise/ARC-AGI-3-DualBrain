@@ -20,3 +20,14 @@ reference/
 .DS_Store
 .idea/
 .vscode/
+
+# Large datasets, logs and daemon caches
+*.parquet
+*.zip
+*.log
+*.pid
+kaggle_output/
+kaggle_leaderboard/
+pulled_kernels/
+.agents/
+conversations/
