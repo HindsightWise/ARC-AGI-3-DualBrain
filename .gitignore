@@ -65,3 +65,6 @@ reference/duck-harness/
 vendor/ARC-AGI-3-Agents/
 conversations/archive/2731c146_2731c146_transcript.jsonl
 conversations/archive/4ba4d5ee_4ba4d5ee_transcript.jsonl
+
+# --- Sovereign Auto-Save Sieve (Auto-Managed) ---
+logs/
