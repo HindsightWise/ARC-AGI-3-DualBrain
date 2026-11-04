@@ -1,0 +1,745 @@
+{
+  "game_name": "cd82",
+  "game_id": "cd82-fb555c5d",
+  "win_levels": 6,
+  "total_actions": 69,
+  "leaderboard_minimum": 69,
+  "delta_to_leaderboard": 0,
+  "per_level_actions": [
+    5,
+    6,
+    16,
+    13,
+    13,
+    16
+  ],
+  "proof_type": "PROVEN_GLOBAL_MINIMUM",
+  "difficulty_tier": "Intermediate",
+  "algorithmic_class": "Reverse Factorization & Exact Dijkstra Cursor Cost",
+  "proof_notes": "Proven minimum for all levels by reverse enumeration of valid paint factorizations plus exact cursor/color action costs.",
+  "available_actions": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "actions_by_level": [
+    [
+      {
+        "action_id": 3,
+        "data": {}
+      },
+      {
+        "action_id": 2,
+        "data": {}
+      },
+      {
+        "action_id": 2,
+        "data": {}
+      },
+      {
+        "action_id": 4,
+        "data": {}
+      },
+      {
+        "action_id": 5,
+        "data": {}
+      }
+    ],
+    [
+      {
+        "action_id": 5,
+        "data": {}
+      },
+      {
+        "action_id": 4,
+        "data": {}
+      },
+      {
+        "action_id": 2,
+        "data": {}
+      },
+      {
+        "action_id": 2,
+        "data": {}
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 46,
+          "y": 4
+        }
+      },
+      {
+        "action_id": 5,
+        "data": {}
+      }
+    ],
+    [
+      {
+        "action_id": 4,
+        "data": {}
+      },
+      {
+        "action_id": 2,
+        "data": {}
+      },
+      {
+        "action_id": 2,
+        "data": {}
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 53,
+          "y": 4
+        }
+      },
+      {
+        "action_id": 5,
+        "data": {}
+      },
+      {
+        "action_id": 1,
+        "data": {}
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 47,
+          "y": 4
+        }
+      },
+      {
+        "action_id": 5,
+        "data": {}
+      },
+      {
+        "action_id": 1,
+        "data": {}
+      },
+      {
+        "action_id": 3,
+        "data": {}
+      },
+      {
+        "action_id": 3,
+        "data": {}
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 29,
+          "y": 4
+        }
+      },
+      {
+        "action_id": 5,
+        "data": {}
+      },
+      {
+        "action_id": 4,
+        "data": {}
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 35,
+          "y": 4
+        }
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 32,
+          "y": 20
+        }
+      }
+    ],
+    [
+      {
+        "action_id": 4,
+        "data": {}
+      },
+      {
+        "action_id": 2,
+        "data": {}
+      },
+      {
+        "action_id": 5,
+        "data": {}
+      },
+      {
+        "action_id": 1,
+        "data": {}
+      },
+      {
+        "action_id": 3,
+        "data": {}
+      },
+      {
+        "action_id": 3,
+        "data": {}
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 35,
+          "y": 4
+        }
+      },
+      {
+        "action_id": 5,
+        "data": {}
+      },
+      {
+        "action_id": 2,
+        "data": {}
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 59,
+          "y": 4
+        }
+      },
+      {
+        "action_id": 5,
+        "data": {}
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 41,
+          "y": 4
+        }
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 13,
+          "y": 39
+        }
+      }
+    ],
+    [
+      {
+        "action_id": 6,
+        "data": {
+          "x": 59,
+          "y": 4
+        }
+      },
+      {
+        "action_id": 5,
+        "data": {}
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 53,
+          "y": 4
+        }
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 32,
+          "y": 20
+        }
+      },
+      {
+        "action_id": 3,
+        "data": {}
+      },
+      {
+        "action_id": 2,
+        "data": {}
+      },
+      {
+        "action_id": 2,
+        "data": {}
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 47,
+          "y": 4
+        }
+      },
+      {
+        "action_id": 5,
+        "data": {}
+      },
+      {
+        "action_id": 4,
+        "data": {}
+      },
+      {
+        "action_id": 4,
+        "data": {}
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 35,
+          "y": 4
+        }
+      },
+      {
+        "action_id": 5,
+        "data": {}
+      }
+    ],
+    [
+      {
+        "action_id": 4,
+        "data": {}
+      },
+      {
+        "action_id": 2,
+        "data": {}
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 47,
+          "y": 4
+        }
+      },
+      {
+        "action_id": 5,
+        "data": {}
+      },
+      {
+        "action_id": 1,
+        "data": {}
+      },
+      {
+        "action_id": 3,
+        "data": {}
+      },
+      {
+        "action_id": 3,
+        "data": {}
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 53,
+          "y": 4
+        }
+      },
+      {
+        "action_id": 5,
+        "data": {}
+      },
+      {
+        "action_id": 2,
+        "data": {}
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 41,
+          "y": 4
+        }
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 13,
+          "y": 39
+        }
+      },
+      {
+        "action_id": 1,
+        "data": {}
+      },
+      {
+        "action_id": 4,
+        "data": {}
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 29,
+          "y": 4
+        }
+      },
+      {
+        "action_id": 6,
+        "data": {
+          "x": 32,
+          "y": 20
+        }
+      }
+    ]
+  ],
+  "flat_actions": [
+    {
+      "action_id": 3,
+      "data": {}
+    },
+    {
+      "action_id": 2,
+      "data": {}
+    },
+    {
+      "action_id": 2,
+      "data": {}
+    },
+    {
+      "action_id": 4,
+      "data": {}
+    },
+    {
+      "action_id": 5,
+      "data": {}
+    },
+    {
+      "action_id": 5,
+      "data": {}
+    },
+    {
+      "action_id": 4,
+      "data": {}
+    },
+    {
+      "action_id": 2,
+      "data": {}
+    },
+    {
+      "action_id": 2,
+      "data": {}
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 46,
+        "y": 4
+      }
+    },
+    {
+      "action_id": 5,
+      "data": {}
+    },
+    {
+      "action_id": 4,
+      "data": {}
+    },
+    {
+      "action_id": 2,
+      "data": {}
+    },
+    {
+      "action_id": 2,
+      "data": {}
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 53,
+        "y": 4
+      }
+    },
+    {
+      "action_id": 5,
+      "data": {}
+    },
+    {
+      "action_id": 1,
+      "data": {}
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 47,
+        "y": 4
+      }
+    },
+    {
+      "action_id": 5,
+      "data": {}
+    },
+    {
+      "action_id": 1,
+      "data": {}
+    },
+    {
+      "action_id": 3,
+      "data": {}
+    },
+    {
+      "action_id": 3,
+      "data": {}
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 29,
+        "y": 4
+      }
+    },
+    {
+      "action_id": 5,
+      "data": {}
+    },
+    {
+      "action_id": 4,
+      "data": {}
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 35,
+        "y": 4
+      }
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 32,
+        "y": 20
+      }
+    },
+    {
+      "action_id": 4,
+      "data": {}
+    },
+    {
+      "action_id": 2,
+      "data": {}
+    },
+    {
+      "action_id": 5,
+      "data": {}
+    },
+    {
+      "action_id": 1,
+      "data": {}
+    },
+    {
+      "action_id": 3,
+      "data": {}
+    },
+    {
+      "action_id": 3,
+      "data": {}
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 35,
+        "y": 4
+      }
+    },
+    {
+      "action_id": 5,
+      "data": {}
+    },
+    {
+      "action_id": 2,
+      "data": {}
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 59,
+        "y": 4
+      }
+    },
+    {
+      "action_id": 5,
+      "data": {}
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 41,
+        "y": 4
+      }
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 13,
+        "y": 39
+      }
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 59,
+        "y": 4
+      }
+    },
+    {
+      "action_id": 5,
+      "data": {}
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 53,
+        "y": 4
+      }
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 32,
+        "y": 20
+      }
+    },
+    {
+      "action_id": 3,
+      "data": {}
+    },
+    {
+      "action_id": 2,
+      "data": {}
+    },
+    {
+      "action_id": 2,
+      "data": {}
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 47,
+        "y": 4
+      }
+    },
+    {
+      "action_id": 5,
+      "data": {}
+    },
+    {
+      "action_id": 4,
+      "data": {}
+    },
+    {
+      "action_id": 4,
+      "data": {}
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 35,
+        "y": 4
+      }
+    },
+    {
+      "action_id": 5,
+      "data": {}
+    },
+    {
+      "action_id": 4,
+      "data": {}
+    },
+    {
+      "action_id": 2,
+      "data": {}
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 47,
+        "y": 4
+      }
+    },
+    {
+      "action_id": 5,
+      "data": {}
+    },
+    {
+      "action_id": 1,
+      "data": {}
+    },
+    {
+      "action_id": 3,
+      "data": {}
+    },
+    {
+      "action_id": 3,
+      "data": {}
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 53,
+        "y": 4
+      }
+    },
+    {
+      "action_id": 5,
+      "data": {}
+    },
+    {
+      "action_id": 2,
+      "data": {}
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 41,
+        "y": 4
+      }
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 13,
+        "y": 39
+      }
+    },
+    {
+      "action_id": 1,
+      "data": {}
+    },
+    {
+      "action_id": 4,
+      "data": {}
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 29,
+        "y": 4
+      }
+    },
+    {
+      "action_id": 6,
+      "data": {
+        "x": 32,
+        "y": 20
+      }
+    }
+  ],
+  "sdk_receipt": {
+    "game_name": "cd82",
+    "game_id": "cd82-fb555c5d",
+    "verified_state": "WIN",
+    "score": 100.0,
+    "resets": 0,
+    "actions_executed": 69,
+    "per_level_actions": [
+      5,
+      6,
+      16,
+      13,
+      13,
+      16
+    ],
+    "levels_completed": 6,
+    "win_levels": 6,
+    "scorecard_id": "87b329dc-de66-4b4a-874b-e9bbd652d658",
+    "replay_duration_seconds": 0.0243,
+    "environment_sha256": "fd9830c9f5c6e27610445076240c91f4d8def73797e986e9daaaab10b5a6ec16",
+    "verified_at_utc": "2026-10-23T11:40:51.685573+00:00",
+    "sdk_verified": true
+  }
+}

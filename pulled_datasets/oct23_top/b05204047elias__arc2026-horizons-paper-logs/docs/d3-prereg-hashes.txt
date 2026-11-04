@@ -1,0 +1,3 @@
+2026-10-22T08:26:54Z
+c1f5b870fbf97674d3b32cecb22a8afdaa2a4c8bb2b86cfadf94915eeac8e2de  docs/d3-plan.md
+6f39b29d87d0551014b9fdcf4e8e90cad6aeb6d3d38492b9aeb7c9c364112a93  arc3/scripts/d3_analysis.py

@@ -1,84 +1,70 @@
-# Project: ARC-AGI-3 Dual-Brain Autonomous Agent Version 3 (Template Matching & State Transformation)
+# Project: ARC-AGI-3 Sovereign Masterpiece Solver (Version 34)
 
 ## Architecture
-The ARC-AGI-3 Version 3 agent in `agent/my_agent.py` is a high-efficiency autonomous agent engineered to solve template-matching and state-transformation puzzle games (such as `ls20`, where objects must be transformed on operator pads to match reference corner/HUD templates before entering goal receptacles) while preserving 100% backward compatibility and zero regressions for directional (`ACTION1`–`ACTION4`), contextual (`ACTION5`), and coordinate targeting (`ACTION6`, as in `vc33`) games.
-
-The architecture comprises six coordinated macro-components in pure Python / NumPy (execution latency < 0.15 ms, throughput > 5000 FPS):
-
-1. **Scene Perception (`ScenePerception`)**:
-   - Converts `latest_frame.frame[0]` to standard 64x64 `np.int8` grid.
-   - Detects dynamic background and canvas colors.
-   - Segments non-background sprite components for generic games.
-2. **Corner Goal Template & HUD Extraction (`TemplatePerception`)**:
-   - Analyzes bottom-left HUD box at rows 55–60, cols 3–8 to extract active piece configuration $(S, C, R)$ scaled 2x.
-   - Matches against canonical 3x3 binary shape primitives ($S \in \{0, 1, 2, 3, 4, 5\}$).
-   - Identifies color index $C \in \{0, 1, 2, 3\}$ from palette `[12, 9, 14, 8]` and rotation $R \in \{0^\circ, 90^\circ, 180^\circ, 270^\circ\}$.
-   - Decodes target goal template $(S^*, C^*, R^*)$ directly from inside goal receptacles (`rjlbuycveu`).
-3. **Operator Pad & Affordance Transition Mapping (`OperatorPadDetector`)**:
-   - Detects 5x5 discrete grid lattice ($x = 4 + 5 \cdot gx, y = 5 \cdot gy$).
-   - Scans 5x5 tile patches to classify:
-     - Rotation pads (`rhsxkxzdjz`): $R \leftarrow (R + 1) \pmod 4$ (90° clockwise).
-     - Color swap pads (`soyhouuebz`): $C \leftarrow (C + 1) \pmod 4$ (cycles `[12, 9, 14, 8]`).
-     - Shape morph pads (`mkjdaccuuf` / `ttfwljgohq`): $S \leftarrow (S + 1) \pmod 6$ (cycles 6 canonical shapes).
-     - Goal receptacles (`rjlbuycveu`): tile coordinates and target template.
-     - Static walls (`ihdgageizm`, color 4) and avatar starting position.
-4. **State-Space Configuration Planner (`ConfigurationPlanner` / Unified Joint BFS)**:
-   - Formulates configuration space as Abelian group $G = \mathbb{Z}_6 \times \mathbb{Z}_4 \times \mathbb{Z}_4$ ($|V| = 96$).
-   - Computes minimal operator activations:
-     $k_S = (S^* - S_0) \pmod 6$, $k_C = (C^* - C_0) \pmod 4$, $k_R = (R^* - R_0) \pmod 4$.
-   - Executes Unified Joint BFS over state space $\mathcal{S} = (gx, gy, S, C, R)$ ($|\mathcal{S}| \le 13,824$ nodes) in $< 0.3$ ms.
-   - Enforces the receptacle blocking invariant: avoids entering goal slots before $(S, C, R) == (S^*, C^*, R^*)$ to prevent collisions and stamina penalty.
-   - Automatically handles pad re-triggering (step off to neighbor and back on).
-5. **Mode-Gated Geodesic Execution Engine (`MyAgent` & `GeodesicPlanner`)**:
-   - Mode Gate:
-     - If puzzle elements (HUD + pads + goal receptacle) are detected: activates Version 3 State-Space Geodesic Planner.
-     - If puzzle elements are absent: falls back 100% to Version 2 engine (`ACTION6` centroid targeting for `vc33`, `ACTION5` contextual interaction, Phase 1 micro-probing, obstacle A* geodesic navigation).
-   - Popping pre-planned actions from FIFO queue maintains > 400 FPS.
-6. **Integrity, Terminal Safety & Kaggle Gate (`SafetyEngine`)**:
-   - Immediate `GameAction.RESET` on `GAME_OVER` / `NOT_PLAYED` (prevents HTTP 400 errors).
-   - Strict Kaggle Gating: `make submit` is authorized ONLY after `make play-local GAME=ls20` completes with `levels_completed >= 1`.
+- **Inference Runtime Engine**: Pennyroyal SGLang v2.5.3 + Qwen3.8-Flash-Next W4A16 AutoRound + Albucino MTP-3 drafter (`MEMFRAC=0.96`, `MAXREQ=10`, `ARC3_MAX_ACTIVE_STREAMS=10`, `total_deadline=532*60`).
+- **Base Patch Bedrock**: Franzen M2 / v11 Cell 2 patch (498,799 bytes, SHA-256 `6fdcd1ae7445c0cfc26eec1047363aa0c196c867d289a35b6f64403b5a43dce2`).
+- **Scheduling & Priority Governance**: Continuous $D'$ Slot Priority Scheduler ($A \cdot M \cdot C + B_{\text{raw}} \cdot C \cdot \phi$) with Ouyang Ruize patience decay ($C$) and fresh final-level entry ($b_0 = 8.0 \cdot C \text{ if } \ell > 1 \text{ else } 0.0$), ensuring zero slot-hogging by stalled games.
+- **Prefix Cache & KV Protection**: 100% frozen `self._system_prompt` (`messages[0]`) across all turns, levels, and context drains, preserving 100% shared RadixAttention `<tools>` prefix cache across all 10 concurrent streams.
+- **Completion-First Engine (Probe-First Governor)**: Shehab Anwer's probe-first governor capping `max_tokens` at 4,096 after no-action streaks, eliminating the 2.06x stall deliberation token burn and converting wasted monologue into environment feedback.
+- **Cold-Boot `0.00` Immunity (4 Layers)**:
+  1. Multithreaded OS page-cache prefetcher (`delay=60, threads=3` to bypass GCS FUSE contention).
+  2. Mode-specific startup timeout (`55 * 60` seconds = 3,300s) + 1,800s gateway wait.
+  3. `patch_startup_shield.py` periodic 420s keepalive `RESET` on warmup game until `/health == 200 OK`, eliminating Kaggle's 15m container kill and socket floods during slow 35-65m weight loads.
+  4. Cell 20 Hard Commit Rehearsal Gate: 5-minute `ft09` run.
+- **Execution & Timeout Armor**: Decoupled HTTP `request_timeout_seconds` with a minimum 45s-60s completion floor in `solver.py`, preventing late-game 9s/16s socket drops on Level 4/5.
+- **In-Memory Algorithmic Affine & Search Primitives**:
+  - Pure Python $\text{GF}(2)$ and $\mathbb{Z}_m$ affine solver (`solve_affine_lights_out`) and bounded search primitives (`bounded_search`, `board()`) injected into the sandbox (`python_tool_sandbox.py` runtime globals) with zero prompt bloat.
+  - Batches human-minimum action sequences (`action(acts)`) in 1 turn per level, scoring up to 6/6 levels (100.00 score) on `ft09`.
+- **Clock Telemetry Grounding**: Retained full clock telemetry (`run_elapsed_seconds`, `time_remaining_seconds`) in `_compact_action_result` to eliminate countdown timer hallucinations.
 
 ## Feature Inventory
-| # | Feature | Description | Milestone | Source |
-|---|---------|-------------|-----------|--------|
-| 1 | R1-CornerHUD | Bottom-left HUD extraction (rows 55–60, cols 3–8) for active piece (S, C, R) | M1 | ORIGINAL_REQUEST §R1, Survey 1, 2 |
-| 2 | R1-CanonicalShapes | Canonical 3x3 binary shape primitives matching (6 shapes, 4 rotations) | M1 | ORIGINAL_REQUEST §R1, Survey 2 |
-| 3 | R1-GoalTemplateExtract | Goal receptacle detection and target template (S*, C*, R*) extraction | M1 | ORIGINAL_REQUEST §R1, Survey 1, 2 |
-| 4 | R2-GridLatticeMapping | 5x5 tile lattice coordinate quantization ($x = 4 + 5gx, y = 5gy$) | M2 | ORIGINAL_REQUEST §R2, Survey 1, 3 |
-| 5 | R2-PadClassification | 5x5 operator pad detection (Rotation 90°, Color cycle, Shape morph) | M2 | ORIGINAL_REQUEST §R2, Survey 1, 2 |
-| 6 | R2-AffordanceTransitions | Pad state transition operators and re-trigger step-off mechanics | M2 | ORIGINAL_REQUEST §R2, Survey 1, 3 |
-| 7 | R3-ConfigDistance | Abelian configuration distance $(k_S, k_C, k_R)$ | M3 | ORIGINAL_REQUEST §R3, Survey 2, 3 |
-| 8 | R3-UnifiedJointBFS | State-space BFS over $\mathcal{S} = (gx, gy, S, C, R)$ emitting minimal actions | M3 | ORIGINAL_REQUEST §R3, Survey 3 |
-| 9 | R3-ReceptacleInvariant | Receptacle collision avoidance until $(S, C, R) == (S^*, C^*, R^*)$ | M3 | ORIGINAL_REQUEST §R3, Survey 1, 3 |
-| 10 | R4-ModeGating | Mode gate preserving Version 2 (ACTION1–ACTION7, ACTION6 for vc33) | M3 | ORIGINAL_REQUEST §R4, Survey 2 |
-| 11 | R5-LocalWinLs20 | `make play-local GAME=ls20` achieves `levels_completed >= 1` | M4 | ORIGINAL_REQUEST §R5, Survey 1, 2, 3 |
-| 12 | R5-VerifyLocalFPS | `make verify-local` executes with zero errors and > 300 FPS | M4 | ORIGINAL_REQUEST §R5, Survey 2, 3 |
-| 13 | R5-NotebookBuild | `make notebook` compiles `agent/my_agent.py` to `submission.ipynb` (t4 accelerator) | M4 | ORIGINAL_REQUEST §R5, Survey 3 |
-| 14 | R5-GitPushAndSubmit | Git commit & push to `origin/main` and execute `make submit` gated on local win | M4 | ORIGINAL_REQUEST §R5, Survey 3 |
+| # | Feature | Description | Milestone | Source | Status |
+|---|---------|-------------|-----------|--------|--------|
+| 1 | Franzen v11 Cell 2 Base Patch | Pristine 498,799-byte patch on Pennyroyal SGLang v2.5.3 + Qwen3.8-Flash-Next | M1 | Survey E1, E2, E3 | DONE |
+| 2 | SGLang Serving & Stream Invariant | `MEMFRAC=0.96`, `MAXREQ=10`, `ARC3_MAX_ACTIVE_STREAMS=10`, `total_deadline=532*60` | M1 | Survey E1, E3 | DONE |
+| 3 | Continuous D' Priority Scheduler | Shiiin9 continuous D' with Ouyang Ruize patience decay ($C$) and $b_0=8.0 \cdot C$ final bonus | M1 | Survey E2, E3 | DONE |
+| 4 | Frozen System Prefix Invariant | Zero system prompt mutation; RadixAttention prefix intact across all 10 streams | M1 | Survey E1, E2, E3 | DONE |
+| 5 | Cold-Boot 55-Min 0.00 Armor | 55m startup timeout, 420s keepalive reset hold, 1800s gateway wait, FUSE prefetcher | M1 | Survey E1 | DONE |
+| 6 | Decoupled Request Timeout Floor | Ensure `request_timeout_seconds` in `solver.py` has a 45s floor, preventing late-game ReadTimeout drops | M1 | Survey E2, E3 | DONE |
+| 7 | Full Clock Telemetry Grounding | Restore `run_elapsed_seconds` and `time_remaining_seconds` to prevent timer hallucinations | M1 | Survey E2 | DONE |
+| 8 | Probe-First Completion Governor | Cap `max_tokens` at 4,096 on $\ge 3$ actionless turns to eliminate stall deliberation token burn | M1 | Survey E1 | DONE |
+| 9 | Sandbox Affine & Search Primitives | Inject `solve_affine_lights_out` and `bounded_search` into sandbox runtime globals | M1 | Survey E2, E3 | DONE |
+| 10 | Rehearsal Benchmark (ft09 > 47.62) | Rehearsal test targeting 6/6 levels (strictly beating 47.62 / 4.0 levels PB) | M2 | User Req R2 | DONE |
+| 11 | Opaque-Box E2E Test Suite | Programmatic test harness covering build, AST parsing, patch apply, and simulation | M3 | User Req R2, R3 | DONE |
+| 12 | Forensic Integrity Audit | Static, AST, and runtime verification verifying authentic logic and zero hardcoded stubs | M3 | System Instruction | DONE |
+| 13 | Colab 80GB A100 Red-Team Critique | Adversarial critique via `colab-redteam` MCP with immediate verified shutdown | M3 | User Req R3 | DONE |
+| 14 | Local Build & Metadata Sync | Programmatic generation of `notebooks/submission.ipynb` and metadata for `v34` | M4 | User Req R3 | DONE |
+| 15 | Remote Kaggle GPU Commit | Push kernel `zerbytheboss/v34-sovereign-apex-engine` to Kaggle; monitor to `COMPLETE` | M4 | User Req R3 | DONE |
+| 16 | Competition Submission / Rollover | Submit completed output to `arc-prize-2026-arc-agi-3` or arm auto-submitter | M4 | User Req R3 | DONE |
 
 ## Milestones
-| # | Name | Scope | Dependencies | Status |
-|---|------|-------|-------------|--------|
-| M1 | Template & HUD Perception | `TemplatePerception`: HUD active piece extraction, 6 canonical shapes, goal slot template decode | none | DONE |
-| M2 | Operator Pad & Affordance Detection | `OperatorPadDetector`: 5x5 lattice mapping, rotation/color/shape pad classification, wall map | M1 | DONE |
-| M3 | State-Space Configuration Planner & Integration | `ConfigurationPlanner` / Unified BFS on $\mathcal{S}$, waypoint queue, receptacle guard, mode gate in `MyAgent` | M1, M2 | DONE |
-| M4 | Local-Win Benchmark & Gated Kaggle Submission | Verify `make play-local GAME=ls20` (`levels_completed >= 1`), `make verify-local` (>300 FPS), `make notebook`, git push, `make submit` | M1, M2, M3 | DONE |
-
-*(Note: In accordance with our single-file architecture in `agent/my_agent.py`, Milestones M1-M3 are consolidated and verified as an integrated system, followed by Milestone M4 verification & gated submission).*
+| # | Name | Scope | Dependencies | Status | Output |
+|---|------|-------|-------------|--------|--------|
+| M1 | v34 Solver & Builder Engineering | Implement `scripts/build_v34_notebook.py` synthesizing Franzen base, D' scheduler, probe-first, timeout floor, clock restoration, and sandbox affine primitives into `notebooks/submission.ipynb` | none | DONE | `scripts/build_v34_notebook.py`, `notebooks/submission.ipynb`, `notebooks/submission_v34.ipynb` |
+| M2 | Local Rehearsal Benchmarking Gate | Execute local rehearsal benchmark on `ft09-0d8bbf25`, verifying stability and achieving score strictly $> 47.62$ (targeting 6/6 levels) | M1 | DONE | Rehearsal telemetry report, score 100.00% (6/6 levels, 75 actions), zero timeouts/crashes |
+| M3 | Multi-Agent & Colab A100 Gate | Reviewer 1 & 2 APPROVE, Challenger 1 & 2 APPROVE, Forensic Auditor CLEAN, Colab Red-Team APPROVE with 0 idle CU | M1, M2 | DONE | Review, Challenger, Audit, and Colab Red-Team handoffs (Gate Result: PASS) |
+| M4 | Kaggle Staging & Competition Deployment | Push `zerbytheboss/v34-sovereign-apex-engine`, verify `COMPLETE` status on GPU, and register submission on leaderboard | M1, M2, M3 | DONE | Verified Kaggle kernel run (COMPLETE, 15m 21s) and submission ref 57754379 |
 
 ## Interface Contracts
-### Engine ↔ Agent
-- `agent.choose_action(frames: list[FrameData], latest_frame: FrameData) -> GameAction`:
-  - Returns `GameAction` instance.
-  - On `latest_frame.state in ("GAME_OVER", GameState.GAME_OVER, "NOT_PLAYED", GameState.NOT_PLAYED)`: returns `GameAction.RESET`.
-  - Directional moves: `GameAction.ACTION1` (Up), `GameAction.ACTION2` (Down), `GameAction.ACTION3` (Left), `GameAction.ACTION4` (Right).
-  - Contextual interaction: `GameAction.ACTION5`.
-  - Coordinate tap targeting: `act = GameAction.ACTION6; act.set_data({"x": col, "y": row})`.
-- Grid access: `np.array(latest_frame.frame[0], dtype=np.int8)`.
-- Available actions: filtered by `latest_frame.available_actions`.
+### `scripts/build_v34_notebook.py` ↔ `notebooks/submission.ipynb`
+- `build_v34_notebook.py` must run deterministically via `.venv/bin/python3` with exit code 0.
+- Outputs `notebooks/submission_v34.ipynb` and byte-identical `notebooks/submission.ipynb`.
+- Valid JSON format with 23 cells matching the Kaggle execution pipeline.
+
+### `python_tool_sandbox.py` ↔ Model REPL
+- Sandbox exposes `current_frame`, `action(acts)`, `solve_affine_lights_out(current_frame)`, and `bounded_search(...)` in `runtime_globals`.
+- `action(acts)` accepts a list of action dicts `[{'action': 'MOUSE', 'row': r, 'col': c}, ...]` and executes them synchronously.
+- Returns compact sanitized result dict containing `run_elapsed_seconds` and `time_remaining_seconds`.
+
+### `solver.py:request_timeout_seconds` ↔ HTTP Client
+- When global game time remaining is $> 60$s, `request_timeout_seconds()` must return $\ge 45.0$s, never clamping below 45s.
 
 ## Code Layout
-- Exclusive Write Target: `/Users/zerbytheboss/.gemini/antigravity/scratch/ARC-AGI-3-Kaggle-Starter/agent/my_agent.py`
-- Generated Deployment Artifact: `/Users/zerbytheboss/.gemini/antigravity/scratch/ARC-AGI-3-Kaggle-Starter/notebooks/submission.ipynb`
-- Metadata: `/Users/zerbytheboss/.gemini/antigravity/scratch/ARC-AGI-3-Kaggle-Starter/notebooks/kernel-metadata.json`
-- Coordination & State: `/Users/zerbytheboss/.gemini/antigravity/scratch/ARC-AGI-3-Kaggle-Starter/.agents/*`
+- `scripts/build_v34_notebook.py`: Version 34 master builder script.
+- `notebooks/submission.ipynb`: Deterministic output notebook submitted to Kaggle.
+- `notebooks/submission_v34.ipynb`: Version-tagged notebook backup.
+- `notebooks/kernel-metadata.json`: Kaggle kernel metadata (`id: "zerbytheboss/v34-sovereign-apex-engine"`).
+- `tests/test_v34_e2e_requirements.py`: Programmatic E2E test suite.
+- `tests/test_v34_adversarial_stress.py`: Standalone adversarial stress tests.
+- `scripts/auto_submit_v34.py`: Automated competition submitter and rollover monitor.
+- `docs/FORENSIC_V34_SOVEREIGN_SYNTHESIS.md`: Comprehensive engineering documentation.

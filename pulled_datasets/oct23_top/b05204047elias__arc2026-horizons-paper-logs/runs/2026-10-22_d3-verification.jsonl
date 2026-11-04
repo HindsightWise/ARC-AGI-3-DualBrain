@@ -1,0 +1,1 @@
+{"baseline": "runs/2026-10-22_d2-seg-groups.jsonl", "rerun": "runs/2026-10-22_d3-verify-b0.jsonl", "ignored": ["budget_buckets", "cmd", "created_utc", "game_seconds", "level_seconds", "time_budget_s", "variant"], "level_counts": [3, 3], "differences": [{}, {}, {}]}

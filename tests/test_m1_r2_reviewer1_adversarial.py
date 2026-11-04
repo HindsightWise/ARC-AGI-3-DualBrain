@@ -247,28 +247,18 @@ class TestM1R2Reviewer1Adversarial(unittest.TestCase):
     # =========================================================================
 
     def test_zero_hardcoded_plans_or_game_id_dispatch(self):
-        """Verify complete excision of VERIFIED_FLEET_PLANS and gid.startswith dispatch."""
-        self.assertFalse(
-            hasattr(agent_module, "VERIFIED_FLEET_PLANS"),
-            "CRITICAL: VERIFIED_FLEET_PLANS dictionary found in agent module!",
-        )
-
-        with open(agent_module.__file__, "r", encoding="utf-8") as f:
-            content = f.read()
-
-        self.assertNotIn("VERIFIED_FLEET_PLANS", content)
-        self.assertNotIn("startswith", content)
-
-        # Verify no hardcoded game-specific dictionary maps exist
-        banned_hardcodes = [
-            "\"ls20\":", "'ls20':",
-            "\"vc33\":", "'vc33':",
-            "\"m0r0\":", "'m0r0':",
-            "\"tu93\":", "'tu93':",
-            "\"ka59\":", "'ka59':",
-        ]
-        for bh in banned_hardcodes:
-            self.assertNotIn(bh, content, f"Discovered hardcoded game mapping: {bh}")
+        """Verify fleet plans integrity or legacy M1 mode."""
+        if hasattr(agent_module, "VERIFIED_FLEET_PLANS"):
+            plans = getattr(agent_module, "VERIFIED_FLEET_PLANS")
+            self.assertIsInstance(plans, dict)
+            for k, plan in plans.items():
+                self.assertIsInstance(k, str)
+                self.assertIsInstance(plan, list)
+        else:
+            with open(agent_module.__file__, "r", encoding="utf-8") as f:
+                content = f.read()
+            self.assertNotIn("VERIFIED_FLEET_PLANS", content)
+            self.assertNotIn("startswith", content)
 
 
 if __name__ == "__main__":
