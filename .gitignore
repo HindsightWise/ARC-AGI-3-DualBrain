@@ -68,3 +68,6 @@ conversations/archive/4ba4d5ee_4ba4d5ee_transcript.jsonl
 
 # --- Sovereign Auto-Save Sieve (Auto-Managed) ---
 logs/
+
+# --- Sovereign Auto-Save Sieve (Auto-Managed) ---
+.lake/
